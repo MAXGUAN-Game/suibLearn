@@ -76,6 +76,7 @@ export default function VideoPlayer({
   const syncingRef = useRef(false);  // Prevent sync loops
   const restoredRef = useRef(false);
   const initialSeekRef = useRef<number | null>(null);
+  const playAttemptRef = useRef(0);
 
   useEffect(() => {
     const screen = screenRef.current;
@@ -169,10 +170,37 @@ export default function VideoPlayer({
     return target;
   }, [abLoop, onAbLoopClear, closeAnalysis, hasSeparateAudio, onTimeUpdate, onProgress]);
 
+  const togglePlay = useCallback(async (): Promise<boolean | undefined> => {
+    closeAnalysis();
+    const video = videoRef.current;
+    const audio = audioRef.current;
+    if (!video) return;
+    const attempt = ++playAttemptRef.current;
+    if (video.paused) {
+      lastSentenceIdx.current = -1;
+      try {
+        await video.play();
+        if (attempt === playAttemptRef.current && videoRef.current === video && !video.paused) return true;
+      } catch {
+        if (attempt !== playAttemptRef.current || videoRef.current !== video) return;
+        video.pause();
+        audio?.pause();
+        setPlaying(false);
+        showKeyboardFeedback('无法播放，请重试');
+      }
+    } else {
+      video.pause();
+      if (audio && hasSeparateAudio) audio.pause();
+      setPlaying(false);
+      return false;
+    }
+  }, [closeAnalysis, hasSeparateAudio, showKeyboardFeedback]);
+
   useEffect(() => {
     const keyDown = (event: KeyboardEvent) => {
+      const space = event.code === 'Space' || event.key === ' ' || event.key === 'Spacebar';
       if (event.defaultPrevented || event.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey ||
-        !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+        (!space && !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key))) return;
       if (showSubtitleMenu || showSpeedMenu || showAnalysis) return;
       if (event.composedPath().some(target => target instanceof HTMLElement && (target.isContentEditable || target.matches(
         'input, textarea, select, [role="textbox"], [role="combobox"], [role="slider"], [role="spinbutton"], [role="menu"], [role="menuitem"], [role="listbox"], [role="option"]',
@@ -181,7 +209,18 @@ export default function VideoPlayer({
         .some(element => element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden')) return;
       const video = videoRef.current;
       if (!video) return;
-      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      if (space) {
+        // Native controls already activate on Space; handling them here would
+        // toggle twice or override the fullscreen button's keyboard action.
+        if (event.composedPath().some(target => target instanceof HTMLElement && target.matches(
+          'button, a[href], area[href], summary, [role="button"], [role="link"], [role="checkbox"], [role="radio"], [role="switch"], [role="tab"], [tabindex]:not([tabindex="-1"])',
+        ))) return;
+        event.preventDefault(); // Repeated Space must still prevent page scroll.
+        if (event.repeat) return;
+        void togglePlay().then(active => {
+          if (active !== undefined) showKeyboardFeedback(active ? '播放' : '暂停');
+        });
+      } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
         const forwards = event.key === 'ArrowRight';
         const target = seekPlayback(video.currentTime + (forwards ? 5 : -5));
         if (target === null) return;
@@ -203,7 +242,7 @@ export default function VideoPlayer({
     };
     document.addEventListener('keydown', keyDown);
     return () => document.removeEventListener('keydown', keyDown);
-  }, [showSubtitleMenu, showSpeedMenu, showAnalysis, seekPlayback, showKeyboardFeedback]);
+  }, [showSubtitleMenu, showSpeedMenu, showAnalysis, seekPlayback, showKeyboardFeedback, togglePlay]);
 
   // Sync audio to video time (for DASH)
   const syncAudio = useCallback(() => {
@@ -281,28 +320,6 @@ export default function VideoPlayer({
     }
   }, [speed, hasSeparateAudio]);
 
-  const togglePlay = () => {
-    closeAnalysis();
-    const video = videoRef.current;
-    const audio = audioRef.current;
-    if (!video) return;
-    if (video.paused) {
-      video.play();
-      if (audio && hasSeparateAudio) {
-        audio.currentTime = video.currentTime;
-        audio.play();
-      }
-      setPlaying(true);
-      lastSentenceIdx.current = -1;
-    } else {
-      video.pause();
-      if (audio && hasSeparateAudio) {
-        audio.pause();
-      }
-      setPlaying(false);
-    }
-  };
-
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const video = videoRef.current;
     if (!video || !duration) return;
@@ -317,8 +334,9 @@ export default function VideoPlayer({
       data-testid="video-player"
       data-player-fullscreen={fullscreen ? 'true' : undefined}
       data-fullscreen-mode={fullscreen ? viewport ? 'viewport' : 'native' : 'inline'}
-      title="快捷键：←/→ 后退/前进 5 秒；↑/↓ 音量增减 10%"
-      aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
+      tabIndex={-1}
+      title="快捷键：空格 播放/暂停；←/→ 后退/前进 5 秒；↑/↓ 音量增减 10%"
+      aria-keyshortcuts="Space ArrowLeft ArrowRight ArrowUp ArrowDown"
       className={`video-player flex flex-col h-full bg-black${fullscreen ? ' is-fullscreen' : ''}${viewport ? ' is-viewport-fullscreen' : ''}`}
     >
       {fullscreenMessage && <div className="player-fullscreen-message" role="status">{fullscreenMessage}</div>}
@@ -355,11 +373,21 @@ export default function VideoPlayer({
               closeAnalysis();
               setPlaying(true);
               if (audioRef.current && hasSeparateAudio) {
+                const video = videoRef.current!;
+                const audio = audioRef.current;
+                const attempt = playAttemptRef.current;
                 audioRef.current.currentTime = videoRef.current!.currentTime;
-                audioRef.current.play();
+                void audio.play().catch(() => {
+                  if (attempt !== playAttemptRef.current || videoRef.current !== video || video.paused) return;
+                  video.pause();
+                  audio.pause();
+                  setPlaying(false);
+                  showKeyboardFeedback('音频无法播放，请重试');
+                });
               }
             }}
             onPause={() => {
+              playAttemptRef.current += 1;
               setPlaying(false);
               if (restoredRef.current && videoRef.current) onProgress?.(videoRef.current.currentTime, videoRef.current.duration, true);
               if (audioRef.current && hasSeparateAudio) {
@@ -433,6 +461,8 @@ export default function VideoPlayer({
             {/* Play/Pause */}
             <button
               onClick={togglePlay}
+              aria-label={playing ? '暂停' : '播放'}
+              aria-keyshortcuts="Space"
               className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-[#2a2a2a] transition text-xl"
             >
               {playing ? '⏸' : '▶️'}
@@ -603,7 +633,13 @@ export default function VideoPlayer({
               aria-busy={fullscreenPending}
               disabled={fullscreenPending}
               title={fullscreen ? '退出全屏（Esc）' : '全屏'}
-              onClick={() => { void toggleFullscreen(); }}
+              onClick={(event) => {
+                const pointerClick = event.detail > 0;
+                if (pointerClick) containerRef.current?.focus();
+                void toggleFullscreen().then(() => {
+                  if (pointerClick) containerRef.current?.focus();
+                });
+              }}
               className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-[#2a2a2a] transition text-[#a0a0a0] disabled:opacity-50"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
