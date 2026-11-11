@@ -92,7 +92,7 @@ export default function GrammarAnalysis({ subtitle, anchorRef, onClose }: Props)
 
   useEffect(() => {
     const controller = new AbortController();
-    const key = JSON.stringify(['sentence-grammar-v3', subtitle.text, subtitle.translated_text || '']);
+    const key = JSON.stringify(['sentence-grammar-v4', subtitle.text, subtitle.translated_text || '']);
     const cached = cache.get(key);
     const load = async () => {
       try {

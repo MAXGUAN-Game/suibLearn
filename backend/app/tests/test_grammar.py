@@ -164,12 +164,14 @@ class GrammarTests(unittest.IsolatedAsyncioTestCase):
             "sentence": text, "translation": "真是灵巧啊。",
             "summary": "省略主语的感叹句，ものだ缩约为もんだ，终助词な表示赞叹。",
             "segments": [
-                {"text": "器用な", "structure": "谓语 / 性质描述", "role": "形容动词连体形",
+                {"text": "器用な", "structure": "定语", "role": "形容动词连体形",
                  "meaning": "灵巧的；熟练的", "explanation": "器用だ通过な连接后面的形式名词。",
                  "reading_tokens": [{"text": "器用", "reading": "きよう"}, {"text": "な", "reading": ""}]},
-                {"text": "もんだ", "structure": "谓语 / 感叹性判断", "role": "感叹句型的缩约",
-                 "meaning": "可真是……", "explanation": "ものだ的口语形式，在这里表示感叹。",
-                 "reading_tokens": [{"text": "もんだ", "reading": ""}]},
+                {"text": "もん", "structure": "谓语中心语", "role": "形式名词的口语缩约",
+                 "meaning": "人或事物（泛指）", "explanation": "もの的口语形式，在这里是名词性谓语的中心语。",
+                 "reading_tokens": [{"text": "もん", "reading": ""}]},
+                {"text": "だ", "structure": "判断谓语", "role": "断定助动词", "meaning": "",
+                 "explanation": "接在名词性成分之后构成判断。", "reading_tokens": [{"text": "だ", "reading": ""}]},
                 {"text": "な", "structure": "语气成分", "role": "终助词", "meaning": "",
                  "explanation": "句末な表达说话人的赞叹。", "reading_tokens": [{"text": "な", "reading": ""}]},
             ],
@@ -177,11 +179,18 @@ class GrammarTests(unittest.IsolatedAsyncioTestCase):
         self.create.return_value = FakeStream(json.dumps(reply))
         result = await grammar.analyze_grammar(text)
         self.assertEqual(result.model_dump(), reply)
-        self.assertEqual(result.segments[0].structure, "谓语 / 性质描述")
+        self.assertEqual([s.structure for s in result.segments], ["定语", "谓语中心语", "判断谓语", "语气成分"])
         self.assertEqual(result.segments[0].meaning, "灵巧的；熟练的")
         self.assertEqual(result.segments[0].reading_tokens[0].reading, "きよう")
         self.assertEqual((await grammar.analyze_grammar(text)).model_dump(), reply)
         self.create.assert_awaited_once()
+
+    async def test_prompt_exclamation_example_is_valid_and_has_no_invented_object(self):
+        example = grammar.SYSTEM_PROMPT.split("完整示例：\n", 1)[1]
+        result = grammar._validate_analysis(example, "器用なもんだな")
+        self.assertEqual([s.text for s in result.segments], ["器用な", "もん", "だ", "な"])
+        self.assertEqual([s.structure for s in result.segments], ["定语", "谓语中心语", "判断谓语", "语气成分"])
+        self.assertIn("时间状语 / 连体修饰从句 / 谓语", grammar.SYSTEM_PROMPT)
 
     async def test_english_relative_clause_keeps_structure_separate_from_word_class(self):
         text = "The book that she recommended is useful."
@@ -293,10 +302,50 @@ class GrammarTests(unittest.IsolatedAsyncioTestCase):
                 reply["segments"][0][field] = value
                 with self.assertRaises(ValidationError):
                     grammar._validate_analysis(json.dumps(reply), TEXT)
+
+    async def test_harmless_extra_fields_are_ignored_at_every_level_and_not_cached(self):
         reply = json.loads(json.dumps(RESULT))
-        reply["segments"][0]["reading_tokens"][0]["extra"] = "unsupported"
+        reply["provider_metadata"] = {"private": "private-provider-data"}
+        reply["segments"][0]["color"] = "red"
+        reply["segments"][0]["reading_tokens"][0]["ruby_style"] = "small"
+        self.create.return_value = FakeStream(json.dumps(reply))
+        result = await grammar.analyze_grammar(TEXT)
+        self.assertEqual(result.model_dump(), RESULT)
+        self.assertNotIn("private-provider-data", result.model_dump_json())
+        self.assertEqual((await grammar.analyze_grammar(TEXT)).model_dump(), RESULT)
+        self.create.assert_awaited_once()
+
+    async def test_extra_alias_does_not_replace_required_field(self):
+        reply = json.loads(json.dumps(RESULT))
+        reply["segments"][0]["syntax"] = reply["segments"][0].pop("structure")
         with self.assertRaises(ValidationError):
             grammar._validate_analysis(json.dumps(reply), TEXT)
+
+    async def test_schema_failure_logs_only_fixed_categories_and_allows_retry(self):
+        reply = json.loads(json.dumps(RESULT))
+        reply["summary"] = "private-provider-summary" * 200
+        del reply["segments"][0]["structure"]
+        reply["segments"][0]["reading_tokens"][0]["reading"] = {"secret": "private-provider-reading"}
+        self.create.return_value = FakeStream(json.dumps(reply))
+        with self.assertLogs(grammar.logger, level="WARNING") as captured:
+            with self.assertRaises(HTTPException) as failure:
+                await grammar.analyze_grammar(TEXT)
+        self.assertEqual(failure.exception.status_code, 502)
+        logs = "".join(captured.output)
+        self.assertIn("reason=invalid_schema; kinds=length,missing,type", logs)
+        for private_value in (TEXT, "private-provider-summary", "private-provider-reading", "reading_tokens", settings.DEEPSEEK_API_KEY):
+            self.assertNotIn(private_value, logs)
+            self.assertNotIn(private_value, failure.exception.detail)
+        self.create.return_value = FakeStream(json.dumps(RESULT))
+        self.assertEqual((await grammar.analyze_grammar(TEXT)).model_dump(), RESULT)
+        self.assertEqual(self.create.await_count, 2)
+
+    async def test_schema_diagnostics_do_not_echo_unknown_error_codes(self):
+        error = SimpleNamespace(errors=lambda **_: [
+            {"type": "private-provider-code", "input": "private-input", "loc": ("private-location",)},
+            {"type": "missing"},
+        ])
+        self.assertEqual(grammar._schema_error_kinds(error), "missing,other")
 
     async def test_invalid_ruby_is_not_cached_and_logs_do_not_disclose_provider_content(self):
         reply = json.loads(json.dumps(RESULT))
@@ -314,14 +363,19 @@ class GrammarTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_previous_prompt_version_cache_does_not_reuse_old_schema(self):
         config = await grammar.get_ai_configuration()
-        old_key = hashlib.sha256(json.dumps([
-            "sentence-grammar-v2", config.base_url, config.model, config.version, TEXT, "",
-        ], ensure_ascii=False).encode("utf-8")).hexdigest()
-        old_reply = json.loads(json.dumps(RESULT))
-        for segment in old_reply["segments"]:
-            for field in ("structure", "meaning", "reading_tokens"):
-                del segment[field]
-        await database.save_grammar_analysis(old_key, json.dumps(old_reply))
+        for version in ("sentence-grammar-v2", "sentence-grammar-v3"):
+            old_key = hashlib.sha256(json.dumps([
+                version, config.base_url, config.model, config.version, TEXT, "",
+            ], ensure_ascii=False).encode("utf-8")).hexdigest()
+            old_reply = json.loads(json.dumps(RESULT))
+            if version.endswith("v2"):
+                for segment in old_reply["segments"]:
+                    for field in ("structure", "meaning", "reading_tokens"):
+                        del segment[field]
+            else:
+                old_reply["segments"][0]["structure"] = "旧结构标注"
+            await database.save_grammar_analysis(old_key, json.dumps(old_reply))
+        self.assertEqual(grammar.PROMPT_VERSION, "sentence-grammar-v4")
         self.assertEqual((await grammar.analyze_grammar(TEXT)).model_dump(), RESULT)
         self.create.assert_awaited_once()
 
