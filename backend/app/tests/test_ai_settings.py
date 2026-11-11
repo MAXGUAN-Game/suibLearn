@@ -174,7 +174,7 @@ class AISettingsTests(unittest.IsolatedAsyncioTestCase):
         seen = []
         result = json.dumps({
             "sentence": "ね", "translation": "对吧", "summary": "句末语气词。",
-            "segments": [{"text": "ね", "role": "语气词", "explanation": "寻求认同。"}],
+            "segments": [{"text": "ね", "structure": "语气成分", "role": "语气词", "meaning": "", "reading_tokens": [{"text": "ね", "reading": ""}], "explanation": "寻求认同。"}],
         })
 
         async def collect(_client, _text, _translation, config):

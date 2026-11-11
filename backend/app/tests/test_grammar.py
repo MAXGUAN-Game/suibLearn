@@ -1,6 +1,7 @@
 """Run with: python -m unittest discover -s app/tests -p test_grammar.py"""
 
 import asyncio
+import hashlib
 import json
 import tempfile
 import unittest
@@ -10,6 +11,7 @@ from unittest.mock import AsyncMock, patch
 
 import httpx
 from fastapi import HTTPException
+from pydantic import ValidationError
 
 from app.auth import create_token
 from app.config import settings
@@ -24,10 +26,18 @@ RESULT = {
     "translation": "你做了什么坏事吗？",
     "summary": "省略主语的口语疑问句，句末的の要求解释。",
     "segments": [
-        {"text": "何か ", "role": "不定代词", "explanation": "指不确定的事情，修饰后面的宾语。"},
-        {"text": "悪いこと", "role": "宾语", "explanation": "形容词悪い修饰こと，口语中省略宾格助词を。"},
-        {"text": "した", "role": "动词过去式", "explanation": "する的た形，表示已发生的动作。"},
-        {"text": "の？", "role": "解释性疑问", "explanation": "句末の带有要求对方说明原因或情况的语气。"},
+        {"text": "何か ", "structure": "宾语 / 不定修饰语", "role": "不定代词", "meaning": "什么；某件事",
+         "explanation": "指不确定的事情，修饰后面的宾语。",
+         "reading_tokens": [{"text": "何", "reading": "なに"}, {"text": "か ", "reading": ""}]},
+        {"text": "悪いこと", "structure": "宾语", "role": "名词短语", "meaning": "坏事",
+         "explanation": "形容词悪い修饰こと，口语中省略宾格助词を。",
+         "reading_tokens": [{"text": "悪", "reading": "わる"}, {"text": "いこと", "reading": ""}]},
+        {"text": "した", "structure": "谓语", "role": "动词过去式", "meaning": "做了",
+         "explanation": "する的た形，表示已发生的动作。",
+         "reading_tokens": [{"text": "した", "reading": ""}]},
+        {"text": "の？", "structure": "语气成分", "role": "解释性疑问", "meaning": "",
+         "explanation": "句末の带有要求对方说明原因或情况的语气。",
+         "reading_tokens": [{"text": "の？", "reading": ""}]},
     ],
 }
 
@@ -58,7 +68,11 @@ def analysis_for(text, pieces):
         "sentence": text,
         "translation": "自然中文译文",
         "summary": "整句语法解释",
-        "segments": [{"text": piece, "role": "语法成分", "explanation": "该成分在本句的语法作用。"} for piece in pieces],
+        "segments": [{
+            "text": piece, "structure": "谓语", "role": "语法成分", "meaning": "该片段的中文意思",
+            "explanation": "该成分在本句的语法作用。",
+            "reading_tokens": [{"text": piece, "reading": ""}],
+        } for piece in pieces],
     }
 
 
@@ -99,6 +113,7 @@ class GrammarTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(self.create.call_args.kwargs["stream"])
         self.assertEqual(self.create.call_args.kwargs["response_format"], {"type": "json_object"})
         self.assertEqual(self.create.call_args.kwargs["extra_body"], {"thinking": {"type": "disabled"}})
+        self.assertEqual(self.create.call_args.kwargs["max_tokens"], 8192)
         messages = self.create.call_args.kwargs["messages"]
         self.assertEqual(json.loads(messages[1]["content"])["text"], TEXT)
 
@@ -142,6 +157,173 @@ class GrammarTests(unittest.IsolatedAsyncioTestCase):
         result = grammar._validate_analysis(json.dumps(reply), text)
         self.assertEqual("".join(segment.text for segment in result.segments), text)
         self.assertEqual([segment.text for segment in result.segments], ["I've ", " wanted ", "to tell her off."])
+
+    async def test_real_japanese_exclamation_has_structure_meaning_and_kanji_ruby(self):
+        text = "器用なもんだな"
+        reply = {
+            "sentence": text, "translation": "真是灵巧啊。",
+            "summary": "省略主语的感叹句，ものだ缩约为もんだ，终助词な表示赞叹。",
+            "segments": [
+                {"text": "器用な", "structure": "谓语 / 性质描述", "role": "形容动词连体形",
+                 "meaning": "灵巧的；熟练的", "explanation": "器用だ通过な连接后面的形式名词。",
+                 "reading_tokens": [{"text": "器用", "reading": "きよう"}, {"text": "な", "reading": ""}]},
+                {"text": "もんだ", "structure": "谓语 / 感叹性判断", "role": "感叹句型的缩约",
+                 "meaning": "可真是……", "explanation": "ものだ的口语形式，在这里表示感叹。",
+                 "reading_tokens": [{"text": "もんだ", "reading": ""}]},
+                {"text": "な", "structure": "语气成分", "role": "终助词", "meaning": "",
+                 "explanation": "句末な表达说话人的赞叹。", "reading_tokens": [{"text": "な", "reading": ""}]},
+            ],
+        }
+        self.create.return_value = FakeStream(json.dumps(reply))
+        result = await grammar.analyze_grammar(text)
+        self.assertEqual(result.model_dump(), reply)
+        self.assertEqual(result.segments[0].structure, "谓语 / 性质描述")
+        self.assertEqual(result.segments[0].meaning, "灵巧的；熟练的")
+        self.assertEqual(result.segments[0].reading_tokens[0].reading, "きよう")
+        self.assertEqual((await grammar.analyze_grammar(text)).model_dump(), reply)
+        self.create.assert_awaited_once()
+
+    async def test_english_relative_clause_keeps_structure_separate_from_word_class(self):
+        text = "The book that she recommended is useful."
+        reply = analysis_for(text, ["The book", "that she recommended", "is", "useful", "."])
+        structures = ["主语", "主语 / 定语从句", "谓语 / 系动词", "谓语 / 表语", "标点"]
+        roles = ["名词短语", "限制性定语从句", "系动词", "形容词", "标点"]
+        meanings = ["这本书", "她推荐的", "是", "有用的", ""]
+        for segment, structure, role, meaning in zip(reply["segments"], structures, roles, meanings):
+            segment.update(structure=structure, role=role, meaning=meaning)
+        self.create.return_value = FakeStream(json.dumps(reply))
+        result = await grammar.analyze_grammar(text)
+        self.assertEqual([s.structure for s in result.segments], structures)
+        self.assertEqual([s.role for s in result.segments], roles)
+        self.assertEqual([s.meaning for s in result.segments], meanings)
+        self.assertEqual("".join(t.text for s in result.segments for t in s.reading_tokens), text)
+        self.assertTrue(all(t.reading == "" for s in result.segments for t in s.reading_tokens))
+
+    async def test_reading_token_boundaries_restore_whitespace_at_both_levels(self):
+        text = " \tI've  wanted\nto tell her off. \t"
+        reply = analysis_for(text, ["I've", "wanted", "to tell her off."])
+        reply["segments"][-1]["reading_tokens"] = [
+            {"text": "to", "reading": ""}, {"text": "tell", "reading": ""},
+            {"text": "her", "reading": ""}, {"text": "off.", "reading": ""},
+        ]
+        self.create.return_value = FakeStream(json.dumps(reply))
+        result = await grammar.analyze_grammar(text)
+        self.assertEqual([t.text for t in result.segments[-1].reading_tokens], [
+            "\nto", " tell", " her", " off. \t",
+        ])
+        for segment in result.segments:
+            self.assertEqual("".join(t.text for t in segment.reading_tokens), segment.text)
+        self.assertEqual("".join(s.text for s in result.segments), text)
+        self.assertEqual((await grammar.analyze_grammar(text)).model_dump(), result.model_dump())
+        self.create.assert_awaited_once()
+
+    async def test_existing_reading_token_whitespace_is_not_duplicated(self):
+        text = "She  had had enough."
+        reply = analysis_for(text, [text])
+        tokens = ["She ", " had", " had ", "enough."]
+        reply["segments"][0]["reading_tokens"] = [{"text": t, "reading": ""} for t in tokens]
+        result = grammar._validate_analysis(json.dumps(reply), text)
+        self.assertEqual([t.text for t in result.segments[0].reading_tokens], tokens)
+
+    async def test_reading_tokens_cannot_rewrite_skip_or_reorder_original_characters(self):
+        for pieces in (
+            ["悪", "こと"], ["悪", "いとこ"], ["いこと", "悪"], ["悪い事"],
+        ):
+            with self.subTest(pieces=pieces):
+                reply = json.loads(json.dumps(RESULT))
+                reply["segments"][1]["reading_tokens"] = [
+                    {"text": p, "reading": "わる" if "悪" in p else ""} for p in pieces
+                ]
+                with self.assertRaises(grammar.AnalysisFormatError) as failure:
+                    grammar._validate_analysis(json.dumps(reply), TEXT)
+                self.assertEqual(failure.exception.reason, "reading_alignment")
+
+    async def test_reading_tokens_cannot_repair_internal_whitespace(self):
+        text = "to  tell her"
+        reply = analysis_for(text, [text])
+        reply["segments"][0]["reading_tokens"] = [{"text": "to tell her", "reading": ""}]
+        with self.assertRaises(grammar.AnalysisFormatError) as failure:
+            grammar._validate_analysis(json.dumps(reply), text)
+        self.assertEqual(failure.exception.reason, "reading_alignment")
+
+    async def test_kanji_requires_hiragana_reading_and_rejects_katakana_or_latin(self):
+        for reading in ("", "ナニ", "nani", "何", "なニ", "な に", " なに ", "ー"):
+            with self.subTest(reading=reading):
+                reply = json.loads(json.dumps(RESULT))
+                reply["segments"][0]["reading_tokens"][0]["reading"] = reading
+                with self.assertRaises(grammar.AnalysisFormatError) as failure:
+                    grammar._validate_analysis(json.dumps(reply), TEXT)
+                self.assertEqual(failure.exception.reason, "invalid_reading")
+
+    async def test_kana_english_whitespace_and_punctuation_do_not_get_ruby(self):
+        for text, reading in (("もん", "もん"), ("カフェ", "かふぇ"), ("book", "ぶっく"), (" ", "くうはく"), ("？", "はてな")):
+            with self.subTest(text=text):
+                reply = analysis_for(text, [text])
+                reply["segments"][0]["reading_tokens"][0]["reading"] = reading
+                with self.assertRaises(grammar.AnalysisFormatError) as failure:
+                    grammar._validate_analysis(json.dumps(reply), text)
+                self.assertEqual(failure.exception.reason, "invalid_reading")
+
+    async def test_ruby_accepts_irregular_kanji_reading_and_supplementary_ideographs(self):
+        text = "今日、時々、𠮷田。"
+        reply = analysis_for(text, [text])
+        reply["segments"][0]["reading_tokens"] = [
+            {"text": "今日", "reading": "きょう"}, {"text": "、", "reading": ""},
+            {"text": "時々", "reading": "ときどき"}, {"text": "、", "reading": ""},
+            {"text": "𠮷田", "reading": "よしだ"}, {"text": "。", "reading": ""},
+        ]
+        self.assertEqual(grammar._validate_analysis(json.dumps(reply), text).model_dump(), reply)
+
+    async def test_new_fields_are_required_and_metadata_cannot_be_blank_or_untyped(self):
+        for field in ("structure", "meaning", "reading_tokens"):
+            with self.subTest(missing=field):
+                reply = json.loads(json.dumps(RESULT))
+                del reply["segments"][0][field]
+                with self.assertRaises(ValidationError):
+                    grammar._validate_analysis(json.dumps(reply), TEXT)
+        for field, value in (("structure", "   "), ("structure", "subject"), ("meaning", "   "), ("meaning", "something")):
+            with self.subTest(field=field, value=value):
+                reply = json.loads(json.dumps(RESULT))
+                reply["segments"][0][field] = value
+                with self.assertRaises(grammar.AnalysisFormatError):
+                    grammar._validate_analysis(json.dumps(reply), TEXT)
+        for field, value in (("reading_tokens", []), ("reading_tokens", None), ("structure", 1), ("meaning", None)):
+            with self.subTest(field=field, value=value):
+                reply = json.loads(json.dumps(RESULT))
+                reply["segments"][0][field] = value
+                with self.assertRaises(ValidationError):
+                    grammar._validate_analysis(json.dumps(reply), TEXT)
+        reply = json.loads(json.dumps(RESULT))
+        reply["segments"][0]["reading_tokens"][0]["extra"] = "unsupported"
+        with self.assertRaises(ValidationError):
+            grammar._validate_analysis(json.dumps(reply), TEXT)
+
+    async def test_invalid_ruby_is_not_cached_and_logs_do_not_disclose_provider_content(self):
+        reply = json.loads(json.dumps(RESULT))
+        reply["segments"][0]["reading_tokens"][0]["reading"] = "private-provider-content"
+        self.create.return_value = FakeStream(json.dumps(reply))
+        with self.assertLogs(grammar.logger, level="WARNING") as captured:
+            with self.assertRaises(HTTPException) as failure:
+                await grammar.analyze_grammar(TEXT)
+        self.assertEqual(failure.exception.status_code, 502)
+        self.assertIn("reason=invalid_reading", "".join(captured.output))
+        self.assertNotIn("private-provider-content", "".join(captured.output))
+        self.create.return_value = FakeStream(json.dumps(RESULT))
+        self.assertEqual((await grammar.analyze_grammar(TEXT)).model_dump(), RESULT)
+        self.assertEqual(self.create.await_count, 2)
+
+    async def test_previous_prompt_version_cache_does_not_reuse_old_schema(self):
+        config = await grammar.get_ai_configuration()
+        old_key = hashlib.sha256(json.dumps([
+            "sentence-grammar-v2", config.base_url, config.model, config.version, TEXT, "",
+        ], ensure_ascii=False).encode("utf-8")).hexdigest()
+        old_reply = json.loads(json.dumps(RESULT))
+        for segment in old_reply["segments"]:
+            for field in ("structure", "meaning", "reading_tokens"):
+                del segment[field]
+        await database.save_grammar_analysis(old_key, json.dumps(old_reply))
+        self.assertEqual((await grammar.analyze_grammar(TEXT)).model_dump(), RESULT)
+        self.create.assert_awaited_once()
 
     async def test_internal_whitespace_changes_are_not_repaired(self):
         text = "I've wanted to  tell her off."

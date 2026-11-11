@@ -16,6 +16,12 @@ const COLORS = ['#8ec5ff', '#e6b0ff', '#7ee2b8', '#ffc680', '#ff9fb6', '#bfc1ff'
 // Keep a bounded session cache: opening the same sentence again costs no request.
 type PopoverStyle = CSSProperties & { '--grammar-arrow-left'?: string; '--grammar-arrow-top'?: string };
 
+function AnnotatedText({ tokens }: { tokens: GrammarAnalysisResult['segments'][number]['reading_tokens'] }) {
+  return tokens.map((token, index) => token.reading
+    ? <ruby key={index}>{token.text}<rp>（</rp><rt>{token.reading}</rt><rp>）</rp></ruby>
+    : <span key={index}>{token.text}</span>);
+}
+
 export default function GrammarAnalysis({ subtitle, anchorRef, onClose }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -86,7 +92,7 @@ export default function GrammarAnalysis({ subtitle, anchorRef, onClose }: Props)
 
   useEffect(() => {
     const controller = new AbortController();
-    const key = JSON.stringify([subtitle.text, subtitle.translated_text || '']);
+    const key = JSON.stringify(['sentence-grammar-v3', subtitle.text, subtitle.translated_text || '']);
     const cached = cache.get(key);
     const load = async () => {
       try {
@@ -94,6 +100,12 @@ export default function GrammarAnalysis({ subtitle, anchorRef, onClose }: Props)
         if (controller.signal.aborted) return;
         if (analysis.sentence !== subtitle.text || !analysis.segments.length || analysis.segments.map(segment => segment.text).join('') !== subtitle.text) {
           throw new Error('解析结果与原句不匹配，请重试');
+        }
+        if (analysis.segments.some(segment => !segment.structure?.trim() || typeof segment.meaning !== 'string' ||
+          !Array.isArray(segment.reading_tokens) || !segment.reading_tokens.length ||
+          segment.reading_tokens.some(token => !token.text || typeof token.reading !== 'string') ||
+          segment.reading_tokens.map(token => token.text).join('') !== segment.text)) {
+          throw new Error('句子结构或读音信息不完整，请重新解析');
         }
         if (!cached) {
           if (cache.size >= 100) cache.delete(cache.keys().next().value!);
@@ -137,6 +149,7 @@ export default function GrammarAnalysis({ subtitle, anchorRef, onClose }: Props)
         )}
         {result && (
           <>
+            <h3 className="grammar-structure-heading">句子结构</h3>
             <div className="grammar-colored-sentence" lang="ja" aria-label="按语法成分标注的原句">
               {result.segments.map((segment, index) => (
                 <button
@@ -144,14 +157,15 @@ export default function GrammarAnalysis({ subtitle, anchorRef, onClose }: Props)
                   type="button"
                   className={`grammar-segment${activeSegment === index ? ' is-active' : ''}`}
                   style={{ '--segment-color': COLORS[index % COLORS.length] } as CSSProperties}
-                  aria-label={`第${index + 1}部分：${segment.text}，${segment.role}`}
+                  aria-label={`第${index + 1}部分：${segment.text}，${segment.structure}，${segment.role}`}
                   onMouseEnter={() => setActiveSegment(index)}
                   onMouseLeave={() => setActiveSegment(null)}
                   onFocus={() => setActiveSegment(index)}
                   onBlur={() => setActiveSegment(null)}
                   onClick={() => panelRef.current?.querySelector(`#${CSS.escape(`${titleId}-part-${index}`)}`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })}
                 >
-                  {segment.text}<sup aria-hidden="true">{index + 1}</sup>
+                  <span className="grammar-segment-text"><AnnotatedText tokens={segment.reading_tokens} /><sup aria-hidden="true">{index + 1}</sup></span>
+                  <span className="grammar-structure-label" lang="zh-CN">{segment.structure}</span>
                 </button>
               ))}
             </div>
@@ -168,7 +182,8 @@ export default function GrammarAnalysis({ subtitle, anchorRef, onClose }: Props)
                   onMouseEnter={() => setActiveSegment(index)}
                   onMouseLeave={() => setActiveSegment(null)}
                 >
-                  <div className="grammar-part-heading"><span className="grammar-part-number">{index + 1}</span><span lang="ja">{segment.text}</span><span className="grammar-role">{segment.role}</span></div>
+                  <div className="grammar-part-heading"><span className="grammar-part-number">{index + 1}</span><span lang="ja" className="grammar-part-text"><AnnotatedText tokens={segment.reading_tokens} /></span><span className="grammar-role">{segment.role}</span></div>
+                  {segment.meaning.trim() && <p className="grammar-meaning"><span>词义：</span>{segment.meaning}</p>}
                   <p>{segment.explanation}</p>
                 </div>
               ))}

@@ -76,7 +76,14 @@ export interface GrammarAnalysisResult {
   sentence: string;
   translation: string;
   summary: string;
-  segments: Array<{ text: string; role: string; explanation: string }>;
+  segments: Array<{
+    text: string;
+    structure: string;
+    role: string;
+    meaning: string;
+    reading_tokens: Array<{ text: string; reading: string }>;
+    explanation: string;
+  }>;
 }
 
 export interface AISettings {
@@ -175,7 +182,7 @@ export async function login(password: string): Promise<{ token: string }> {
 /** Verify current token is valid */
 export async function verifyToken(): Promise<boolean> {
   try {
-    await request<any>('/auth/verify');
+    await request<unknown>('/auth/verify');
     return true;
   } catch {
     return false;

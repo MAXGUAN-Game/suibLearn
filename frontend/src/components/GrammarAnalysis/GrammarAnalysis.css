@@ -17,8 +17,14 @@
 .grammar-close { flex-shrink: 0; width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: #a5a5ae; font-size: 26px; line-height: 1; cursor: pointer; }
 .grammar-close:hover { background: #ffffff12; color: white; }
 .grammar-original, .grammar-colored-sentence { font-size: 23px; line-height: 1.9; font-weight: 500; white-space: pre-wrap; overflow-wrap: anywhere; }
-.grammar-colored-sentence { margin: 0 -2px; }
-.grammar-segment { display: inline; padding: 2px; margin: 0 1px; border: 0; border-bottom: 2px solid var(--segment-color); border-radius: 4px; color: var(--segment-color); background: transparent; font: inherit; white-space: pre-wrap; cursor: pointer; transition: background .15s; }
+.grammar-structure-heading { margin: 0 0 10px; color: #a9a9b3; font-size: 12px; font-weight: 500; }
+.grammar-colored-sentence { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px 6px; margin: 0 -2px; }
+.grammar-segment { display: inline-flex; flex-direction: column; align-items: stretch; max-width: 100%; padding: 3px 4px 5px; border: 0; border-radius: 5px; color: var(--segment-color); background: transparent; font: inherit; white-space: pre-wrap; text-align: left; cursor: pointer; transition: background .15s; }
+.grammar-segment-text { display: block; padding: 4px 0 3px; border-bottom: 2px solid var(--segment-color); line-height: 2.1; overflow-wrap: anywhere; }
+.grammar-structure-label { display: block; padding-top: 5px; font-size: 11px; font-weight: 500; line-height: 1.6; white-space: normal; overflow-wrap: anywhere; }
+.grammar-popover ruby { ruby-align: center; ruby-position: over; }
+.grammar-popover rt { font-size: max(10px, .5em); font-weight: 400; line-height: 1.25; color: #c7c7d0; }
+.grammar-part-text { line-height: 2.1; }
 .grammar-segment sup { position: relative; top: -.6em; font-size: 10px; margin-left: 2px; }
 .grammar-segment:hover, .grammar-segment.is-active { background: #ffffff12; }
 .grammar-translation { margin-top: 12px; color: #a9a9b3; font-size: 14px; white-space: pre-wrap; }
@@ -34,6 +40,8 @@
 .grammar-part-number { display: inline-flex; width: 19px; height: 19px; justify-content: center; align-items: center; border: 1px solid currentColor; border-radius: 50%; font-size: 10px; line-height: 1; flex-shrink: 0; }
 .grammar-role { padding: 1px 7px; background: #ffffff08; border-radius: 4px; font-size: 11px; }
 .grammar-part p { margin-top: 7px; color: #b9b9c3; font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.grammar-part .grammar-meaning { color: #ededf0; font-size: 13px; }
+.grammar-meaning > span { color: #a9a9b3; }
 .grammar-loading { display: flex; gap: 10px; align-items: center; padding: 26px 0 10px; color: #aaaab5; font-size: 13px; }
 .grammar-spinner { width: 15px; height: 15px; flex-shrink: 0; border: 2px solid #565160; border-top-color: #c4b1ff; border-radius: 50%; animation: grammar-spin 1s linear infinite; }
 .grammar-error { margin-top: 20px; color: #f4b2ae; }
