@@ -163,7 +163,10 @@ npx.cmd eslint src/components/VideoPlayer/VideoPlayer.tsx src/components/Grammar
 - `POST /api/analysis/grammar` 的每个 segment 新增必填 `structure: string`、`meaning: string`、`reading_tokens: [{text, reading}]`，保留 `text/role/explanation`。词块拼接必须逐字等于 segment.text，片段拼接必须逐字等于 sentence；两层只允许恢复原文遗漏的边界空白，不修复错字或漏词。汉字词块必须有平假名读音，拒绝片假名、罗马字和缺失读音。
 - `PROMPT_VERSION=sentence-grammar-v4`；前端缓存键同步升级，旧解析会重新生成，不需要删除视频或字幕。增加输出预算到 8192，保留超时、并发合并、失败不缓存及日志脱敏。
 - 提示词明确名词不自动等于宾语，并提供截图实句的完整示例：「器用な」定语、「もん」谓语中心语、「だ」判断谓语、「な」语气成分；对日语连体修饰从句标出层级。模型返回的无害附加属性会被忽略且不进入响应／缓存，缺少必填或改变原文／读音的结果仍被拒绝。格式诊断日志仅记录固定错误分类。
-- 本地 49 项后端测试、9 项字幕选择测试、TypeScript/Vite 构建与修改文件 ESLint 通过。浏览器模拟响应覆盖截图实句、成分标签、上下两处注音、词义、原句不变、手机宽度、加载失败重试及原有交互；真实供应商和生产发布结果在发布后补记。
+- 本地及服务器候选镜像的 49 项后端测试通过；9 项字幕选择测试、TypeScript/Vite 构建与修改文件 ESLint 通过。浏览器模拟响应覆盖截图实句、成分标签、上下两处注音、词义、原句不变、手机宽度、加载失败重试及原有交互。
+- 已发布功能提交 `9447883`，候选／运行镜像 `sublearn-backend:structure-9447883e`，线上健康检查正常。真实 DeepSeek 核验了截图句「器用なもんだな」、英文定语从句、日文连体修饰从句及《孤独的美食家》首集实际台词；截图句不再把「もん」误标为宾语。
+- 生产浏览器直接调用真实解析 API，检查顶部成分标签、`器用 → きよう`、下方中文词义、原句逐字不变；1600px 桌面及 390px 手机无横向溢出。真实首集播放、跳转及汉字注音正常，浏览器无运行时错误。
+- 完整记录差集校验通过：39 个视频、16215 行字幕、4 个合集及 AI 配置保持不变；只新增解析缓存。发布前源码／前端备份在 `/opt/sublearn-releases/20261111T124813Z-before-structure-ruby/source-before.tar.gz`，数据库一致性备份在 `/app/data/backups/before-structure-20261111T124813Z.db`，旧镜像标签 `sublearn-backend:before-structure-20261111T124813Z`。增量镜像不增加依赖，未修改服务器 Nginx 的本地域名配置。
 
 ## 追加：两部日剧字幕与首集测试（2026-11-11）
 
