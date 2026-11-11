@@ -1,5 +1,7 @@
 # SubLearn
 
+最新功能、AI 设置、验证及服务器发布记录见 [docs/development-handoff.md](docs/development-handoff.md)（2026-11-11）。继续开发前先读该交接文件。
+
 视频 + 字幕学习平台，主攻日语。上传视频和字幕文件，自动解析并生成学习模式（逐句播放、AB 循环、罗马音标注、变速、合集管理等），任何设备都能通过网页访问。
 
 部署在阿里云 Ubuntu 上，Docker Compose 拉起。
