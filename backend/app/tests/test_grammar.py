@@ -33,8 +33,9 @@ RESULT = {
 
 
 class FakeStream:
-    def __init__(self, content):
+    def __init__(self, content, finish_reason="stop"):
         self.content = content
+        self.finish_reason = finish_reason
 
     async def __aenter__(self):
         return self
@@ -47,6 +48,18 @@ class FakeStream:
         yield SimpleNamespace(choices=[])
         for part in (self.content[:30], self.content[30:]):
             yield SimpleNamespace(choices=[SimpleNamespace(delta=SimpleNamespace(content=part))])
+        yield SimpleNamespace(choices=[SimpleNamespace(
+            delta=SimpleNamespace(content=None), finish_reason=self.finish_reason,
+        )])
+
+
+def analysis_for(text, pieces):
+    return {
+        "sentence": text,
+        "translation": "自然中文译文",
+        "summary": "整句语法解释",
+        "segments": [{"text": piece, "role": "语法成分", "explanation": "该成分在本句的语法作用。"} for piece in pieces],
+    }
 
 
 class GrammarTests(unittest.IsolatedAsyncioTestCase):
@@ -99,6 +112,95 @@ class GrammarTests(unittest.IsolatedAsyncioTestCase):
     async def test_fenced_json_is_accepted(self):
         self.create.return_value = FakeStream("```json\n" + json.dumps(RESULT) + "\n```")
         self.assertEqual((await grammar.analyze_grammar(TEXT)).sentence, TEXT)
+
+    async def test_english_phrase_boundaries_restore_only_original_spaces_and_cache(self):
+        text = "I've wanted to tell her off for the last six weeks."
+        pieces = ["I've", "wanted", "to tell her off", "for the last six weeks", "."]
+        self.create.return_value = FakeStream(json.dumps(analysis_for(text, pieces)))
+        result = await grammar.analyze_grammar(text)
+        self.assertEqual(result.sentence, text)
+        self.assertEqual([segment.text for segment in result.segments], [
+            "I've", " wanted", " to tell her off", " for the last six weeks", ".",
+        ])
+        self.assertEqual("".join(segment.text for segment in result.segments), text)
+        cached = await grammar.analyze_grammar(text)
+        self.assertEqual(cached.model_dump(), result.model_dump())
+        self.create.assert_awaited_once()
+
+    async def test_original_double_spaces_newline_and_edge_whitespace_are_preserved(self):
+        text = "  I've  wanted\nto tell her off. \t"
+        reply = analysis_for(text, ["I've", "wanted", "to tell her off", "."])
+        result = grammar._validate_analysis(json.dumps(reply), text)
+        self.assertEqual([segment.text for segment in result.segments], [
+            "  I've", "  wanted", "\nto tell her off", ". \t",
+        ])
+        self.assertEqual("".join(segment.text for segment in result.segments), text)
+
+    async def test_existing_whitespace_in_segments_is_not_duplicated(self):
+        text = "I've  wanted to tell her off."
+        reply = analysis_for(text, ["I've ", " wanted ", "to tell her off."])
+        result = grammar._validate_analysis(json.dumps(reply), text)
+        self.assertEqual("".join(segment.text for segment in result.segments), text)
+        self.assertEqual([segment.text for segment in result.segments], ["I've ", " wanted ", "to tell her off."])
+
+    async def test_internal_whitespace_changes_are_not_repaired(self):
+        text = "I've wanted to  tell her off."
+        reply = analysis_for(text, ["I've", "wanted", "to tell her off", "."])
+        with self.assertRaises(grammar.AnalysisFormatError):
+            grammar._validate_analysis(json.dumps(reply), text)
+
+    async def test_repeated_words_are_matched_in_order_without_skipping(self):
+        text = "She had had enough."
+        reply = analysis_for(text, ["She", "had", "had", "enough", "."])
+        result = grammar._validate_analysis(json.dumps(reply), text)
+        self.assertEqual("".join(segment.text for segment in result.segments), text)
+        reply["segments"].pop(2)
+        with self.assertRaises(grammar.AnalysisFormatError):
+            grammar._validate_analysis(json.dumps(reply), text)
+
+    async def test_missing_word_punctuation_or_changed_characters_are_rejected(self):
+        text = "I've wanted to tell her off for the last six weeks."
+        for pieces in (
+            ["I've", "wanted", "to tell off", "for the last six weeks", "."],
+            ["I've", "wanted", "to tell her off", "for the last six weeks"],
+            ["I've", "wanted", "to tell her of", "for the last six weeks", "."],
+            ["I’ve", "wanted", "to tell her off", "for the last six weeks", "."],
+            ["wanted", "I've", "to tell her off", "for the last six weeks", "."],
+        ):
+            with self.subTest(pieces=pieces):
+                with self.assertRaises(grammar.AnalysisFormatError):
+                    grammar._validate_analysis(json.dumps(analysis_for(text, pieces)), text)
+
+    async def test_sentence_field_must_still_match_verbatim(self):
+        reply = dict(RESULT, sentence=TEXT.replace("何か ", "何か"))
+        with self.assertRaises(grammar.AnalysisFormatError) as failure:
+            grammar._validate_analysis(json.dumps(reply), TEXT)
+        self.assertEqual(failure.exception.reason, "sentence_mismatch")
+
+    async def test_truncated_stream_is_rejected_even_if_json_is_valid_and_not_cached(self):
+        self.create.return_value = FakeStream(json.dumps(RESULT), finish_reason="length")
+        with self.assertLogs(grammar.logger, level="WARNING") as captured:
+            with self.assertRaises(HTTPException) as failure:
+                await grammar.analyze_grammar(TEXT)
+        self.assertEqual(failure.exception.status_code, 502)
+        self.assertIn("长度限制", failure.exception.detail)
+        self.assertIn("reason=truncated", captured.output[0])
+        self.assertNotIn(TEXT, "".join(captured.output))
+        self.create.return_value = FakeStream(json.dumps(RESULT))
+        self.assertEqual((await grammar.analyze_grammar(TEXT)).sentence, TEXT)
+        self.assertEqual(self.create.await_count, 2)
+
+    async def test_alignment_failure_logs_fixed_reason_without_source_or_credentials(self):
+        reply = dict(RESULT, segments=RESULT["segments"][:-1])
+        self.create.return_value = FakeStream(json.dumps(reply))
+        with self.assertLogs(grammar.logger, level="WARNING") as captured:
+            with self.assertRaises(HTTPException) as failure:
+                await grammar.analyze_grammar(TEXT)
+        self.assertIn("对应原句", failure.exception.detail)
+        logs = "".join(captured.output)
+        self.assertIn("reason=segment_alignment", logs)
+        for private_value in (TEXT, settings.DEEPSEEK_API_KEY, settings.DEEPSEEK_BASE_URL):
+            self.assertNotIn(private_value, logs)
 
     async def test_invalid_json_is_not_cached_and_retry_can_succeed(self):
         self.create.return_value = FakeStream("This is not a JSON analysis")
