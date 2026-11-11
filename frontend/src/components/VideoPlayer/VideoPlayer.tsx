@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback, useState, useMemo, useId } from 'react';
 import type { SubtitleLine } from '../../types';
 import GrammarAnalysis from '../GrammarAnalysis/GrammarAnalysis';
+import { getActiveSubtitleIndex } from '../../utils/subtitleSelection';
 
 interface Props {
   src: string;
@@ -91,7 +92,7 @@ export default function VideoPlayer({
 
   // Current subtitle for overlay
   const currentSub = useMemo(() => {
-    return subtitles.find(s => currentTime >= s.start && currentTime <= s.end);
+    return subtitles[getActiveSubtitleIndex(subtitles, currentTime)];
   }, [subtitles, currentTime]);
   const showAnalysis = analysisTarget !== null && analysisTarget.src === src &&
     analysisTarget.subtitle.start === currentSub?.start && analysisTarget.subtitle.end === currentSub?.end &&
@@ -133,7 +134,7 @@ export default function VideoPlayer({
 
       // Sentence mode check
       if (sentenceMode) {
-        const idx = subtitles.findIndex(s => t >= s.start && t <= s.end);
+        const idx = getActiveSubtitleIndex(subtitles, t);
         if (idx >= 0 && idx !== lastSentenceIdx.current) {
           // New sentence started
           lastSentenceIdx.current = idx;
@@ -162,12 +163,16 @@ export default function VideoPlayer({
   useEffect(() => {
     if (seekTo !== null && videoRef.current) {
       videoRef.current.currentTime = seekTo;
+      setCurrentTime(seekTo);
+      onTimeUpdate(seekTo);
+      lastSentenceIdx.current = -1;
+      closeAnalysis();
       if (audioRef.current && hasSeparateAudio) {
         audioRef.current.currentTime = seekTo;
       }
       onSeeked();
     }
-  }, [seekTo, onSeeked, hasSeparateAudio]);
+  }, [seekTo, onSeeked, hasSeparateAudio, onTimeUpdate, closeAnalysis]);
 
   // Handle speed change
   useEffect(() => {
@@ -209,6 +214,9 @@ export default function VideoPlayer({
     const ratio = (e.clientX - rect.left) / rect.width;
     const newTime = ratio * duration;
     video.currentTime = newTime;
+    setCurrentTime(newTime);
+    onTimeUpdate(newTime);
+    lastSentenceIdx.current = -1;
     if (audioRef.current && hasSeparateAudio) {
       audioRef.current.currentTime = newTime;
     }
@@ -322,7 +330,7 @@ export default function VideoPlayer({
                   return;
                 }
                 const playbackTime = videoRef.current?.currentTime ?? currentTime;
-                const activeSubtitle = subtitles.find(sub => playbackTime >= sub.start && playbackTime <= sub.end);
+                const activeSubtitle = subtitles[getActiveSubtitleIndex(subtitles, playbackTime)];
                 if (!activeSubtitle?.text.trim()) return;
                 videoRef.current?.pause();
                 if (hasSeparateAudio) audioRef.current?.pause();

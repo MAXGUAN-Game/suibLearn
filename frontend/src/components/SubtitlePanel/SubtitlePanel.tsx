@@ -1,5 +1,6 @@
 import { useRef, useEffect, useMemo } from 'react';
 import type { SubtitleLine, RomajiSegment } from '../../types';
+import { getActiveSubtitleIndex } from '../../utils/subtitleSelection';
 
 interface Props {
   subtitles: SubtitleLine[];
@@ -40,7 +41,7 @@ export default function SubtitlePanel({ subtitles, currentTime, onSeek, onSetAbL
 
   // Find current subtitle index
   const currentIdx = useMemo(() => {
-    return subtitles.findIndex(s => currentTime >= s.start && currentTime <= s.end);
+    return getActiveSubtitleIndex(subtitles, currentTime);
   }, [subtitles, currentTime]);
 
   // Auto-scroll to current subtitle

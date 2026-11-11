@@ -76,6 +76,7 @@ API 均复用现有登录认证：
 cd backend
 .venv/Scripts/python.exe -m unittest discover -s app/tests -p "test_*.py" -v
 cd ../frontend
+node --experimental-strip-types --test tests/subtitleSelection.test.ts
 npm.cmd run build
 npx.cmd eslint src/components/VideoPlayer/VideoPlayer.tsx src/components/GrammarAnalysis/GrammarAnalysis.tsx src/components/GrammarAnalysis/grammarCache.ts src/components/AISettings/AISettingsButton.tsx
 ```
@@ -137,6 +138,15 @@ npx.cmd eslint src/components/VideoPlayer/VideoPlayer.tsx src/components/Grammar
 - 流式响应的 `finish_reason=length` 单独识别，向用户提示输出截断；日志仅记录固定的失败原因码，不记录原文、模型全文、URL 或 Key。
 - 未增加额外的上游重试。前端合同保持不变，不需要重新构建前端；上线须更新并重新启动后端镜像。
 - 32 项后端测试通过，新增覆盖截图英文句、缓存中的完整空格、首尾空白、多空格和换行、部分已保留空格、重复词、缺字/改标点拒绝、截断结果不入缓存及日志脱敏。
+
+## 追加：重叠注释抢占台词的修复（2026-11-11）
+
+- 第一集 `03:33.72–03:41.63` 的仅译文注释 `[Cream Puffs 意为泡芙或者娘娘腔]` 与随后三句台词重叠。旧实现用首个时间命中项并包含结束时刻，导致点击 `03:37.13`、`03:37.97`、`03:39.87` 的台词后，高亮/自动滚动回注释，原文模式中字幕为空。
+- 新增共享选择函数 `frontend/src/utils/subtitleSelection.ts`：使用 `[start, end)`；重叠时优先有非空原文的台词，同类选起点最新的条目，同起点稳定保留首项；没有台词时仍保留仅译文内容作为兜底。没有删除注释或改写既有字幕数据。
+- 播放器字幕、右侧高亮与自动滚动、逐句暂停、解析按钮取句均使用同一个函数。外部点句和点击进度条跳转会立即同步播放时间与字幕状态，暂停时也能正确更新。
+- 新增 `frontend/tests/subtitleSelection.test.ts` 的 9 项 Node 原生测试，涵盖真实重叠时间、句末边界、乱序输入、同类重叠、仅译文兜底、空白条目和间隙；不新增依赖。
+- 浏览器以真实时间范围的媒体夹具逐一验证三句点击、精确跳转、正确高亮、原文字幕显示、连续播放跨句、逐句模式暂停；解析请求的目标台词通过本地模拟响应验证。TypeScript、Vite 构建和相关文件 ESLint 均通过。
+- 本次只需发布前端源码与 `dist`，无需重建后端，也无需重新上传第一集。复查现有第一集 `03:37–03:42` 即可。
 
 ## 后续可继续做
 
