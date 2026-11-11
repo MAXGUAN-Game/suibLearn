@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useId } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { SubtitleLine } from '../../types';
 import {
@@ -43,6 +43,25 @@ function LearningSession({ videoId }: { videoId: string }) {
   const [currentTime, setCurrentTime] = useState(0);
   const [seekTo, setSeekTo] = useState<number | null>(null);
   const [abLoop, setAbLoop] = useState<{ a: number; b: number } | null>(null);
+  const [subtitlesCollapsed, setSubtitlesCollapsed] = useState(() => {
+    try { return localStorage.getItem('sublearn_subtitles_collapsed_v1') === 'true'; }
+    catch { return false; }
+  });
+  const subtitlePanelId = useId();
+  const subtitlePanelRef = useRef<HTMLElement>(null);
+  const panelToggleUsedRef = useRef(false);
+  const setPanelCollapsed = (collapsed: boolean) => {
+    panelToggleUsedRef.current = true;
+    setSubtitlesCollapsed(collapsed);
+  };
+
+  useEffect(() => {
+    try { localStorage.setItem('sublearn_subtitles_collapsed_v1', String(subtitlesCollapsed)); }
+    catch { /* The panel still works when browser storage is unavailable. */ }
+    if (panelToggleUsedRef.current) {
+      subtitlePanelRef.current?.querySelector<HTMLButtonElement>('button[aria-expanded]')?.focus();
+    }
+  }, [subtitlesCollapsed]);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -181,14 +200,38 @@ function LearningSession({ videoId }: { videoId: string }) {
         </div>
 
         {/* Subtitle Panel */}
-        <div className="lg:w-[420px] lg:min-w-[380px] border-l border-[#2a2a2a] overflow-hidden">
-          <SubtitlePanel
-            subtitles={subtitles}
-            currentTime={currentTime}
-            onSeek={handleSeek}
-            onSetAbLoop={handleSetAbLoop}
-          />
-        </div>
+        <aside
+          ref={subtitlePanelRef}
+          aria-label="字幕列表"
+          className={`shrink-0 border-l border-[#2a2a2a] overflow-hidden ${subtitlesCollapsed ? 'lg:w-[52px]' : 'lg:w-[420px] lg:min-w-[380px]'}`}
+        >
+          {subtitlesCollapsed ? (
+            <button
+              type="button"
+              onClick={() => setPanelCollapsed(false)}
+              aria-label="展开字幕列表"
+              aria-expanded="false"
+              aria-controls={subtitlePanelId}
+              title="展开字幕列表"
+              className="w-full min-h-[52px] flex lg:flex-col items-center justify-center gap-2 p-2 text-sm text-[#a0a0a0] hover:text-white hover:bg-[#2a2a2a] transition"
+            >
+              <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m15 6-6 6 6 6M4 5v14" /></svg>
+              <span className="lg:[writing-mode:vertical-rl]">展开字幕</span>
+            </button>
+          ) : null}
+          <div id={subtitlePanelId} className={subtitlesCollapsed ? 'hidden' : 'h-full'}>
+            {!subtitlesCollapsed && (
+              <SubtitlePanel
+                subtitles={subtitles}
+                currentTime={currentTime}
+                onSeek={handleSeek}
+                onSetAbLoop={handleSetAbLoop}
+                onCollapse={() => setPanelCollapsed(true)}
+                panelId={subtitlePanelId}
+              />
+            )}
+          </div>
+        </aside>
       </div>
     </div>
   );

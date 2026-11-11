@@ -5,6 +5,7 @@ import { analyzeGrammar, type GrammarAnalysisResult } from '../../services/api';
 import type { SubtitleLine } from '../../types';
 import { grammarAnalysisCache as cache } from './grammarCache';
 import './GrammarAnalysis.css';
+import { useFullscreenPortal } from '../../utils/fullscreen';
 
 interface Props {
   subtitle: SubtitleLine;
@@ -23,6 +24,7 @@ function AnnotatedText({ tokens }: { tokens: GrammarAnalysisResult['segments'][n
 }
 
 export default function GrammarAnalysis({ subtitle, anchorRef, onClose }: Props) {
+  const portalRoot = useFullscreenPortal();
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
@@ -83,7 +85,7 @@ export default function GrammarAnalysis({ subtitle, anchorRef, onClose }: Props)
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('focusin', handleFocus);
     };
-  }, [anchorRef, onClose, closeAndFocus]);
+  }, [anchorRef, onClose, closeAndFocus, portalRoot]);
 
   // Focus only after the visible position has actually committed to the DOM.
   useEffect(() => {
@@ -192,6 +194,6 @@ export default function GrammarAnalysis({ subtitle, anchorRef, onClose }: Props)
         )}
       </div>
     </div>,
-    document.body,
+    portalRoot,
   );
 }

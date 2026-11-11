@@ -1,0 +1,10 @@
+.video-player { position: relative; min-width: 0; }
+.video-player-screen { position: relative; }
+.video-player-video { display: block; width: 100%; height: 100%; object-fit: contain; }
+.video-player.is-fullscreen { width: 100%; height: 100%; max-width: none; background: #000; }
+.video-player.is-viewport-fullscreen { position: fixed; inset: 0; z-index: 1000; width: 100vw; height: 100dvh; }
+.video-player.is-fullscreen .video-player-subtitles { position: absolute; left: 0; right: 0; bottom: calc(var(--video-bottom-gap, 0px) + clamp(12px, 3vh, 32px)); z-index: 1; height: auto; max-height: 32%; padding: 4px 16px; background: transparent; pointer-events: none; }
+.video-player.is-fullscreen .video-player-subtitles p { width: fit-content; margin-left: auto; margin-right: auto; padding: 3px 10px; border-radius: 5px; background: #0008; text-shadow: 0 2px 4px #000, 1px 0 2px #000, -1px 0 2px #000; }
+.video-player.is-fullscreen .video-player-subtitles .player-subtitle-original { font-size: clamp(18px, 2.1vw, 32px); }
+.video-player.is-fullscreen .video-player-subtitles .player-subtitle-translation { color: #e0e0e0; font-size: clamp(15px, 1.5vw, 23px); }
+.player-fullscreen-message { position: absolute; top: 12px; left: 12px; z-index: 30; max-width: calc(100% - 24px); border-radius: 7px; padding: 8px 12px; background: #202024ed; color: #ddd; font-size: 12px; pointer-events: none; }

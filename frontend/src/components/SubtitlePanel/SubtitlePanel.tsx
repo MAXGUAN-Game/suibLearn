@@ -7,6 +7,8 @@ interface Props {
   currentTime: number;
   onSeek: (time: number) => void;
   onSetAbLoop: (a: number, b: number) => void;
+  onCollapse: () => void;
+  panelId: string;
 }
 
 function formatTimestamp(seconds: number): string {
@@ -35,7 +37,7 @@ function RomajiDisplay({ segments }: { segments: RomajiSegment[] }) {
   );
 }
 
-export default function SubtitlePanel({ subtitles, currentTime, onSeek, onSetAbLoop }: Props) {
+export default function SubtitlePanel({ subtitles, currentTime, onSeek, onSetAbLoop, onCollapse, panelId }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef<HTMLDivElement>(null);
 
@@ -47,24 +49,39 @@ export default function SubtitlePanel({ subtitles, currentTime, onSeek, onSetAbL
   // Auto-scroll to current subtitle
   useEffect(() => {
     if (activeRef.current && containerRef.current) {
-      activeRef.current.scrollIntoView({
+      const active = activeRef.current;
+      const container = containerRef.current;
+      container.scrollTo({
+        top: Math.max(0, active.getBoundingClientRect().top - container.getBoundingClientRect().top +
+          container.scrollTop - (container.clientHeight - active.clientHeight) / 2),
         behavior: 'smooth',
-        block: 'center',
       });
     }
   }, [currentIdx]);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       {/* Panel Header */}
-      <div className="px-4 py-2 border-b border-[#2a2a2a] flex items-center justify-between">
+      <div className="shrink-0 px-4 py-2 border-b border-[#2a2a2a] flex items-center justify-between">
         <span className="text-sm text-[#a0a0a0]">
           字幕 ({subtitles.length} 句)
         </span>
+        <button
+          type="button"
+          onClick={onCollapse}
+          aria-label="收拢字幕列表"
+          aria-expanded="true"
+          aria-controls={panelId}
+          title="收拢字幕列表"
+          className="min-w-[44px] min-h-[44px] flex items-center justify-center gap-1 rounded-lg text-sm text-[#a0a0a0] hover:bg-[#2a2a2a] hover:text-white transition px-2"
+        >
+          <span>收拢</span>
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m9 6 6 6-6 6M20 5v14" /></svg>
+        </button>
       </div>
 
       {/* Subtitle List */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto">
+      <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto">
         {subtitles.map((sub, idx) => {
           const isActive = idx === currentIdx;
           return (

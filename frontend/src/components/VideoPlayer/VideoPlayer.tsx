@@ -4,6 +4,8 @@ import GrammarAnalysis from '../GrammarAnalysis/GrammarAnalysis';
 import { getActiveSubtitleIndex } from '../../utils/subtitleSelection';
 import { PLAYER_SPEEDS, restorePosition } from '../../utils/playerState';
 import type { SubtitleMode } from '../../utils/playerState';
+import { usePlayerFullscreen } from './usePlayerFullscreen';
+import './VideoPlayer.css';
 
 interface Props {
   src: string;
@@ -43,6 +45,10 @@ export default function VideoPlayer({
   abLoop, sentenceMode, speed, onSpeedChange, onSentenceModeToggle, onAbLoopClear,
   subtitleMode, onSubtitleModeChange, initialPosition = 0, onProgress,
 }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const screenRef = useRef<HTMLDivElement>(null);
+  const fullscreenButtonRef = useRef<HTMLButtonElement>(null);
+  const { fullscreen, viewport, pending: fullscreenPending, message: fullscreenMessage, toggle: toggleFullscreen } = usePlayerFullscreen(containerRef, fullscreenButtonRef);
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const rafRef = useRef<number>(0);
@@ -60,6 +66,22 @@ export default function VideoPlayer({
   const syncingRef = useRef(false);  // Prevent sync loops
   const restoredRef = useRef(false);
   const initialSeekRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const screen = screenRef.current;
+    const video = videoRef.current;
+    if (!screen || !video) return;
+    const update = () => {
+      const bounds = screen.getBoundingClientRect();
+      const ratio = video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : bounds.width / bounds.height;
+      const imageHeight = Math.min(bounds.height, bounds.width / ratio);
+      screen.style.setProperty('--video-bottom-gap', `${Math.max(0, (bounds.height - imageHeight) / 2) || 0}px`);
+    };
+    const observer = new ResizeObserver(update);
+    observer.observe(screen);
+    video.addEventListener('loadedmetadata', update);
+    return () => { observer.disconnect(); video.removeEventListener('loadedmetadata', update); };
+  }, []);
 
   const hasSeparateAudio = Boolean(audioSrc);
   const language = sourceLanguage.trim().toLowerCase().split(/[-_]/)[0];
@@ -235,15 +257,22 @@ export default function VideoPlayer({
   };
 
   return (
-    <div className="flex flex-col h-full bg-black">
+    <div
+      ref={containerRef}
+      data-testid="video-player"
+      data-player-fullscreen={fullscreen ? 'true' : undefined}
+      data-fullscreen-mode={fullscreen ? viewport ? 'viewport' : 'native' : 'inline'}
+      className={`video-player flex flex-col h-full bg-black${fullscreen ? ' is-fullscreen' : ''}${viewport ? ' is-viewport-fullscreen' : ''}`}
+    >
+      {fullscreenMessage && <div className="player-fullscreen-message" role="status">{fullscreenMessage}</div>}
       {/* Letterbox Cinema Layout: video + subtitle bar below */}
-      <div className="relative flex-1 flex flex-col min-h-0">
+      <div ref={screenRef} data-testid="player-screen" className="video-player-screen relative flex-1 flex flex-col min-h-0">
         {/* Video Area (with black bars on sides/top) */}
         <div className="flex-1 flex items-center justify-center bg-black min-h-0" onClick={togglePlay}>
           <video
             ref={videoRef}
             src={src}
-            className="max-w-full max-h-full"
+            className="video-player-video max-w-full max-h-full"
             onLoadedMetadata={(e) => {
               const element = e.currentTarget;
               setDuration(element.duration);
@@ -308,14 +337,14 @@ export default function VideoPlayer({
         </div>
 
         {/* Subtitle Bar - fixed height black band below video (like cinema letterbox) */}
-        <div className="bg-black flex items-center justify-center px-6 h-[88px] shrink-0 overflow-y-auto">
+        <div data-testid="player-subtitles" data-overlay={fullscreen} className="video-player-subtitles bg-black flex items-center justify-center px-6 h-[88px] shrink-0 overflow-y-auto">
           {subtitleMode !== 'off' && currentSub ? (
             <div className="text-center max-w-[90%]">
-              <p className="text-white text-base font-medium leading-snug">
+              <p className="player-subtitle-original text-white text-base font-medium leading-snug">
                 {currentSub.text}
               </p>
               {subtitleMode === 'bilingual' && currentSub.translated_text && (
-                <p className="text-[#b0b0b0] text-sm leading-snug mt-0.5">
+                <p className="player-subtitle-translation text-[#b0b0b0] text-sm leading-snug mt-0.5">
                   {currentSub.translated_text}
                 </p>
               )}
@@ -327,7 +356,7 @@ export default function VideoPlayer({
       </div>
 
       {/* Controls Bar */}
-      <div className="bg-[#141414] px-4 py-2 border-t border-[#2a2a2a]">
+      <div data-testid="player-controls" className="relative shrink-0 z-20 bg-[#141414] px-4 py-2 border-t border-[#2a2a2a]">
         {/* Progress Bar */}
         <div
           className="w-full h-2 bg-[#2a2a2a] rounded cursor-pointer mb-2 group"
@@ -506,6 +535,22 @@ export default function VideoPlayer({
                 </div>
               )}
             </div>
+            <button
+              ref={fullscreenButtonRef}
+              data-testid="player-fullscreen-toggle"
+              type="button"
+              aria-label={fullscreen ? '退出全屏' : '全屏'}
+              aria-pressed={fullscreen}
+              aria-busy={fullscreenPending}
+              disabled={fullscreenPending}
+              title={fullscreen ? '退出全屏（Esc）' : '全屏'}
+              onClick={() => { void toggleFullscreen(); }}
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-[#2a2a2a] transition text-[#a0a0a0] disabled:opacity-50"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d={fullscreen ? 'M9 3v6H3m12-6v6h6M9 21v-6H3m12 6v-6h6' : 'M9 3H3v6m12-6h6v6M3 15v6h6m12-6v6h-6'} />
+              </svg>
+            </button>
           </div>
         </div>
       </div>

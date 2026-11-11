@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { getAISettings, saveAISettings, testAISettings } from '../../services/api';
 import { clearGrammarAnalysisCache } from '../GrammarAnalysis/grammarCache';
 import './AISettings.css';
+import { useFullscreenPortal } from '../../utils/fullscreen';
 
 interface DialogProps {
   onClose: () => void;
@@ -11,6 +12,7 @@ interface DialogProps {
 }
 
 function AISettingsDialog({ onClose, returnFocusRef }: DialogProps) {
+  const portalRoot = useFullscreenPortal();
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -28,7 +30,9 @@ function AISettingsDialog({ onClose, returnFocusRef }: DialogProps) {
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
-    const returnFocusElement = returnFocusRef.current;
+    const activeElement = document.activeElement;
+    const returnFocusElement = activeElement instanceof HTMLElement && activeElement.closest('[data-testid="video-player"]')
+      ? activeElement : returnFocusRef.current;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     closeRef.current?.focus();
@@ -56,7 +60,8 @@ function AISettingsDialog({ onClose, returnFocusRef }: DialogProps) {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener('keydown', keyDown);
       document.removeEventListener('focusin', focusIn);
-      returnFocusElement?.focus();
+      if (returnFocusElement?.isConnected) returnFocusElement.focus();
+      else document.querySelector<HTMLButtonElement>('[data-testid="player-fullscreen-toggle"]')?.focus();
     };
   }, [onClose, returnFocusRef]);
 
@@ -150,7 +155,7 @@ function AISettingsDialog({ onClose, returnFocusRef }: DialogProps) {
         </form>
       </div>
     </div>,
-    document.body,
+    portalRoot,
   );
 }
 
