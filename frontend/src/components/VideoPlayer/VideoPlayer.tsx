@@ -28,6 +28,13 @@ interface Props {
 }
 
 const SPEED_OPTIONS = PLAYER_SPEEDS;
+const VOLUME_KEY = 'sublearn_player_volume_v1';
+function readVolume(): number {
+  try {
+    const value: unknown = JSON.parse(window.localStorage.getItem(VOLUME_KEY) ?? '1');
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1 ? value : 1;
+  } catch { return 1; }
+}
 const SUBTITLE_LABELS: Record<string, { original: string; bilingual: string }> = {
   ja: { original: '日语', bilingual: '日中字幕' },
   en: { original: '英语', bilingual: '英中字幕' },
@@ -55,6 +62,9 @@ export default function VideoPlayer({
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(initialPosition);
   const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(readVolume);
+  const [keyboardFeedback, setKeyboardFeedback] = useState('');
+  const feedbackTimerRef = useRef<number | null>(null);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
   const [analysisTarget, setAnalysisTarget] = useState<{ src: string; subtitle: SubtitleLine } | null>(null);
@@ -127,6 +137,74 @@ export default function VideoPlayer({
     analysisTarget.subtitle.text === currentSub?.text;
   const closeAnalysis = useCallback(() => setAnalysisTarget(null), []);
 
+  const showKeyboardFeedback = useCallback((message: string) => {
+    if (feedbackTimerRef.current !== null) window.clearTimeout(feedbackTimerRef.current);
+    setKeyboardFeedback(message);
+    feedbackTimerRef.current = window.setTimeout(() => setKeyboardFeedback(''), 1400);
+  }, []);
+
+  useEffect(() => () => {
+    if (feedbackTimerRef.current !== null) window.clearTimeout(feedbackTimerRef.current);
+  }, []);
+
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.volume = volume;
+    if (audioRef.current) audioRef.current.volume = volume;
+  }, [volume, src, audioSrc]);
+
+  const seekPlayback = useCallback((position: number): number | null => {
+    const video = videoRef.current;
+    if (!video || video.readyState < 1 || !Number.isFinite(video.duration) || video.duration <= 0 || !Number.isFinite(position)) return null;
+    const target = Math.min(video.duration, Math.max(0, position));
+    if (abLoop && (target < abLoop.a || target >= abLoop.b)) onAbLoopClear();
+    initialSeekRef.current = null;
+    restoredRef.current = true;
+    lastSentenceIdx.current = -1;
+    closeAnalysis();
+    video.currentTime = target;
+    if (hasSeparateAudio && audioRef.current) audioRef.current.currentTime = target;
+    setCurrentTime(target);
+    onTimeUpdate(target);
+    onProgress?.(target, video.duration, true);
+    return target;
+  }, [abLoop, onAbLoopClear, closeAnalysis, hasSeparateAudio, onTimeUpdate, onProgress]);
+
+  useEffect(() => {
+    const keyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey ||
+        !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+      if (showSubtitleMenu || showSpeedMenu || showAnalysis) return;
+      if (event.composedPath().some(target => target instanceof HTMLElement && (target.isContentEditable || target.matches(
+        'input, textarea, select, [role="textbox"], [role="combobox"], [role="slider"], [role="spinbutton"], [role="menu"], [role="menuitem"], [role="listbox"], [role="option"]',
+      )))) return;
+      if (Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"], dialog[open], [aria-modal="true"], [role="menu"], [role="listbox"], [aria-haspopup][aria-expanded="true"]'))
+        .some(element => element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden')) return;
+      const video = videoRef.current;
+      if (!video) return;
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        const forwards = event.key === 'ArrowRight';
+        const target = seekPlayback(video.currentTime + (forwards ? 5 : -5));
+        if (target === null) return;
+        event.preventDefault();
+        showKeyboardFeedback(`${forwards ? '快进' : '后退'} 5 秒 · ${formatTime(target)}`);
+      } else {
+        event.preventDefault();
+        const next = Math.max(0, Math.min(1, Math.round((video.volume + (event.key === 'ArrowUp' ? .1 : -.1)) * 100) / 100));
+        video.volume = next;
+        if (next > 0) video.muted = false;
+        if (audioRef.current) {
+          audioRef.current.volume = next;
+          if (next > 0) audioRef.current.muted = false;
+        }
+        setVolume(next);
+        try { window.localStorage.setItem(VOLUME_KEY, JSON.stringify(next)); } catch { /* Disabled storage must not interrupt playback. */ }
+        showKeyboardFeedback(`音量 ${Math.round(next * 100)}%`);
+      }
+    };
+    document.addEventListener('keydown', keyDown);
+    return () => document.removeEventListener('keydown', keyDown);
+  }, [showSubtitleMenu, showSpeedMenu, showAnalysis, seekPlayback, showKeyboardFeedback]);
+
   // Sync audio to video time (for DASH)
   const syncAudio = useCallback(() => {
     const video = videoRef.current;
@@ -190,21 +268,8 @@ export default function VideoPlayer({
 
   // Handle seek from external
   useEffect(() => {
-    if (seekTo !== null && videoRef.current) {
-      if (videoRef.current.readyState < 1) return; // Apply it when metadata arrives.
-      initialSeekRef.current = null; // An explicit user seek supersedes resume.
-      restoredRef.current = true;
-      videoRef.current.currentTime = seekTo;
-      setCurrentTime(seekTo);
-      onTimeUpdate(seekTo);
-      lastSentenceIdx.current = -1;
-      closeAnalysis();
-      if (audioRef.current && hasSeparateAudio) {
-        audioRef.current.currentTime = seekTo;
-      }
-      onSeeked();
-    }
-  }, [seekTo, onSeeked, hasSeparateAudio, onTimeUpdate, closeAnalysis]);
+    if (seekTo !== null && seekPlayback(seekTo) !== null) onSeeked();
+  }, [seekTo, onSeeked, seekPlayback]);
 
   // Handle speed change
   useEffect(() => {
@@ -239,21 +304,11 @@ export default function VideoPlayer({
   };
 
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    closeAnalysis();
     const video = videoRef.current;
     if (!video || !duration) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const ratio = (e.clientX - rect.left) / rect.width;
-    const newTime = ratio * duration;
-    initialSeekRef.current = null;
-    restoredRef.current = true;
-    video.currentTime = newTime;
-    setCurrentTime(newTime);
-    onTimeUpdate(newTime);
-    lastSentenceIdx.current = -1;
-    if (audioRef.current && hasSeparateAudio) {
-      audioRef.current.currentTime = newTime;
-    }
+    seekPlayback(ratio * duration);
   };
 
   return (
@@ -262,11 +317,14 @@ export default function VideoPlayer({
       data-testid="video-player"
       data-player-fullscreen={fullscreen ? 'true' : undefined}
       data-fullscreen-mode={fullscreen ? viewport ? 'viewport' : 'native' : 'inline'}
+      title="快捷键：←/→ 后退/前进 5 秒；↑/↓ 音量增减 10%"
+      aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown"
       className={`video-player flex flex-col h-full bg-black${fullscreen ? ' is-fullscreen' : ''}${viewport ? ' is-viewport-fullscreen' : ''}`}
     >
       {fullscreenMessage && <div className="player-fullscreen-message" role="status">{fullscreenMessage}</div>}
       {/* Letterbox Cinema Layout: video + subtitle bar below */}
       <div ref={screenRef} data-testid="player-screen" className="video-player-screen relative flex-1 flex flex-col min-h-0">
+        {keyboardFeedback && <div data-testid="player-keyboard-feedback" className="player-keyboard-feedback" role="status">{keyboardFeedback}</div>}
         {/* Video Area (with black bars on sides/top) */}
         <div className="flex-1 flex items-center justify-center bg-black min-h-0" onClick={togglePlay}>
           <video
@@ -286,6 +344,7 @@ export default function VideoPlayer({
                 if (seekTo !== null) onSeeked();
               }
               element.playbackRate = speed;
+              element.volume = volume;
             }}
             onLoadedData={(e) => {
               // Some streams reset an early metadata-time seek to zero. Retry
