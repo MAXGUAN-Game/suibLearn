@@ -86,7 +86,7 @@ def _validate_analysis(reply: str, text: str) -> GrammarAnalysis:
     fenced = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", content, flags=re.DOTALL | re.IGNORECASE)
     if fenced:
         content = fenced.group(1)
-    result = GrammarAnalysis.model_validate(json.loads(content))
+    result = GrammarAnalysis.model_validate(_coalesce_whitespace_segments(json.loads(content), text))
     if result.sentence != text:
         raise AnalysisFormatError("sentence_mismatch")
     _restore_boundary_whitespace(result.segments, text)
@@ -108,6 +108,68 @@ def _validate_analysis(reply: str, text: str) -> GrammarAnalysis:
             elif token.reading:
                 raise AnalysisFormatError("invalid_reading")
     return result
+
+
+def _coalesce_whitespace_segments(payload: object, text: str) -> object:
+    """Absorb layout-only segments without inventing grammar or changing text.
+
+    Providers can put a sentence's spaces into their own segment with empty
+    syntax labels. Validate the original ordered pieces and their reading tokens
+    before moving those exact spaces onto adjacent real segments. Only layout
+    segments may omit reading tokens; content segments retain the full contract.
+    """
+    if not isinstance(payload, dict):
+        return payload
+    raw_segments = payload.get("segments")
+    if not isinstance(raw_segments, list) or not all(
+        isinstance(item, dict) and isinstance(item.get("text"), str) and item["text"]
+        for item in raw_segments
+    ):
+        return payload
+    if not any(item["text"].isspace() for item in raw_segments) or not any(
+        not item["text"].isspace() for item in raw_segments
+    ):
+        return payload
+
+    segments = []
+    for raw in raw_segments:
+        if raw["text"].isspace():
+            tokens = raw.get("reading_tokens", [])
+            if tokens == []:
+                tokens = [{"text": raw["text"], "reading": ""}]
+            # Layout metadata is discarded; it has no syntactic meaning.
+            segment = GrammarSegment(
+                text=raw["text"], structure="空白", role="空白", meaning="",
+                explanation="空白", reading_tokens=tokens,
+            )
+        else:
+            segment = GrammarSegment.model_validate(raw)
+        segments.append(segment)
+
+    _restore_boundary_whitespace(segments, text)
+    for segment in segments:
+        _restore_boundary_whitespace(segment.reading_tokens, segment.text, "reading_alignment")
+
+    combined: list[GrammarSegment] = []
+    prefix = ""
+    prefix_tokens: list[ReadingToken] = []
+    for segment in segments:
+        if segment.text.isspace():
+            if combined:
+                combined[-1].text += segment.text
+                combined[-1].reading_tokens.extend(segment.reading_tokens)
+            else:
+                prefix += segment.text
+                prefix_tokens.extend(segment.reading_tokens)
+        else:
+            if prefix:
+                segment.text = prefix + segment.text
+                segment.reading_tokens = prefix_tokens + segment.reading_tokens
+                prefix = ""
+                prefix_tokens = []
+            combined.append(segment)
+    payload["segments"] = [segment.model_dump() for segment in combined]
+    return payload
 
 
 def _restore_boundary_whitespace(

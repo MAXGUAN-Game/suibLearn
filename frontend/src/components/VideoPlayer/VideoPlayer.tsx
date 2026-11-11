@@ -2,6 +2,8 @@ import { useRef, useEffect, useCallback, useState, useMemo, useId } from 'react'
 import type { SubtitleLine } from '../../types';
 import GrammarAnalysis from '../GrammarAnalysis/GrammarAnalysis';
 import { getActiveSubtitleIndex } from '../../utils/subtitleSelection';
+import { PLAYER_SPEEDS, restorePosition } from '../../utils/playerState';
+import type { SubtitleMode } from '../../utils/playerState';
 
 interface Props {
   src: string;
@@ -17,17 +19,19 @@ interface Props {
   onSpeedChange: (speed: number) => void;
   onSentenceModeToggle: () => void;
   onAbLoopClear: () => void;
+  subtitleMode: SubtitleMode;
+  onSubtitleModeChange: (mode: SubtitleMode) => void;
+  initialPosition?: number;
+  onProgress?: (position: number, duration: number, flush?: boolean) => void;
 }
 
-const SPEED_OPTIONS = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0];
+const SPEED_OPTIONS = PLAYER_SPEEDS;
 const SUBTITLE_LABELS: Record<string, { original: string; bilingual: string }> = {
   ja: { original: '日语', bilingual: '日中字幕' },
   en: { original: '英语', bilingual: '英中字幕' },
   ko: { original: '韩语', bilingual: '韩中字幕' },
   zh: { original: '中文', bilingual: '双语字幕' },
 };
-type SubtitleMode = 'original' | 'bilingual' | 'off';
-
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
@@ -37,15 +41,15 @@ function formatTime(seconds: number): string {
 export default function VideoPlayer({
   src, audioSrc, sourceLanguage = 'ja', subtitles, onTimeUpdate, seekTo, onSeeked,
   abLoop, sentenceMode, speed, onSpeedChange, onSentenceModeToggle, onAbLoopClear,
+  subtitleMode, onSubtitleModeChange, initialPosition = 0, onProgress,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const rafRef = useRef<number>(0);
   const [playing, setPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
+  const [currentTime, setCurrentTime] = useState(initialPosition);
   const [duration, setDuration] = useState(0);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
-  const [subtitleMode, setSubtitleMode] = useState<SubtitleMode>('bilingual');
   const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
   const [analysisTarget, setAnalysisTarget] = useState<{ src: string; subtitle: SubtitleLine } | null>(null);
   const analysisButtonRef = useRef<HTMLButtonElement>(null);
@@ -54,6 +58,8 @@ export default function VideoPlayer({
   const subtitleMenuId = useId();
   const lastSentenceIdx = useRef(-1);
   const syncingRef = useRef(false);  // Prevent sync loops
+  const restoredRef = useRef(false);
+  const initialSeekRef = useRef<number | null>(null);
 
   const hasSeparateAudio = Boolean(audioSrc);
   const language = sourceLanguage.trim().toLowerCase().split(/[-_]/)[0];
@@ -120,6 +126,7 @@ export default function VideoPlayer({
       const t = video.currentTime;
       setCurrentTime(t);
       onTimeUpdate(t);
+      if (restoredRef.current) onProgress?.(t, video.duration);
 
       // Sync audio for DASH
       syncAudio();
@@ -152,7 +159,7 @@ export default function VideoPlayer({
       }
     }
     rafRef.current = requestAnimationFrame(trackPlayback);
-  }, [onTimeUpdate, abLoop, sentenceMode, subtitles, syncAudio, hasSeparateAudio]);
+  }, [onTimeUpdate, onProgress, abLoop, sentenceMode, subtitles, syncAudio, hasSeparateAudio]);
 
   useEffect(() => {
     rafRef.current = requestAnimationFrame(tick);
@@ -162,6 +169,9 @@ export default function VideoPlayer({
   // Handle seek from external
   useEffect(() => {
     if (seekTo !== null && videoRef.current) {
+      if (videoRef.current.readyState < 1) return; // Apply it when metadata arrives.
+      initialSeekRef.current = null; // An explicit user seek supersedes resume.
+      restoredRef.current = true;
       videoRef.current.currentTime = seekTo;
       setCurrentTime(seekTo);
       onTimeUpdate(seekTo);
@@ -213,6 +223,8 @@ export default function VideoPlayer({
     const rect = e.currentTarget.getBoundingClientRect();
     const ratio = (e.clientX - rect.left) / rect.width;
     const newTime = ratio * duration;
+    initialSeekRef.current = null;
+    restoredRef.current = true;
     video.currentTime = newTime;
     setCurrentTime(newTime);
     onTimeUpdate(newTime);
@@ -232,7 +244,25 @@ export default function VideoPlayer({
             ref={videoRef}
             src={src}
             className="max-w-full max-h-full"
-            onLoadedMetadata={(e) => setDuration((e.target as HTMLVideoElement).duration)}
+            onLoadedMetadata={(e) => {
+              const element = e.currentTarget;
+              setDuration(element.duration);
+              if (!restoredRef.current) {
+                const position = restorePosition(seekTo ?? initialPosition, element.duration);
+                initialSeekRef.current = position > 0 ? position : null;
+                restoredRef.current = position === 0;
+                element.currentTime = position;
+                setCurrentTime(position);
+                onTimeUpdate(position);
+                if (seekTo !== null) onSeeked();
+              }
+              element.playbackRate = speed;
+            }}
+            onLoadedData={(e) => {
+              // Some streams reset an early metadata-time seek to zero. Retry
+              // after the first decoded frame; never save that transient zero.
+              if (initialSeekRef.current !== null) e.currentTarget.currentTime = initialSeekRef.current;
+            }}
             onPlay={() => {
               closeAnalysis();
               setPlaying(true);
@@ -243,6 +273,7 @@ export default function VideoPlayer({
             }}
             onPause={() => {
               setPlaying(false);
+              if (restoredRef.current && videoRef.current) onProgress?.(videoRef.current.currentTime, videoRef.current.duration, true);
               if (audioRef.current && hasSeparateAudio) {
                 audioRef.current.pause();
               }
@@ -250,13 +281,23 @@ export default function VideoPlayer({
             onSeeked={() => {
               closeAnalysis();
               if (videoRef.current) {
+                const initialSeek = initialSeekRef.current;
+                if (initialSeek !== null) {
+                  if (Math.abs(initialSeek - videoRef.current.currentTime) > .15) return;
+                  initialSeekRef.current = null;
+                  restoredRef.current = true;
+                }
                 setCurrentTime(videoRef.current.currentTime);
                 onTimeUpdate(videoRef.current.currentTime);
+                if (restoredRef.current && initialSeek === null) {
+                  onProgress?.(videoRef.current.currentTime, videoRef.current.duration, true);
+                }
               }
               if (audioRef.current && hasSeparateAudio && videoRef.current) {
                 audioRef.current.currentTime = videoRef.current.currentTime;
               }
             }}
+            onEnded={(e) => { setPlaying(false); onProgress?.(e.currentTarget.duration, e.currentTarget.duration, true); }}
             playsInline
           />
 
@@ -398,7 +439,7 @@ export default function VideoPlayer({
                       type="button"
                       aria-pressed={subtitleMode === option.value}
                       onClick={() => {
-                        setSubtitleMode(option.value);
+                        onSubtitleModeChange(option.value);
                         setShowSubtitleMenu(false);
                         subtitleButtonRef.current?.focus();
                       }}
@@ -417,6 +458,7 @@ export default function VideoPlayer({
             {/* Sentence Mode */}
             <button
               onClick={onSentenceModeToggle}
+              aria-pressed={sentenceMode}
               className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition text-sm px-3 ${
                 sentenceMode ? 'bg-[#e74c3c] text-white' : 'hover:bg-[#2a2a2a] text-[#a0a0a0]'
               }`}

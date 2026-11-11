@@ -1,3 +1,5 @@
+import type { PlayerSettings, PlayerSettingsPatch, WatchProgress } from '../utils/playerState';
+
 // --- Types :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 export interface VideoItem {
@@ -127,6 +129,28 @@ export function logout(): void {
 // --- API Functions :::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 const BASE_URL = '/api';
+
+async function playbackRequest<T>(path: string, options?: RequestInit): Promise<T> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try { return await request<T>(`/playback${path}`, { ...options, signal: controller.signal }); }
+  finally { clearTimeout(timeout); }
+}
+export function getPlayerSettings(): Promise<PlayerSettings> {
+  return playbackRequest('/settings');
+}
+export function savePlayerSettings(patch: PlayerSettingsPatch): Promise<PlayerSettings> {
+  return playbackRequest('/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch), keepalive: true });
+}
+export function getWatchProgress(videoId: string): Promise<WatchProgress> {
+  return playbackRequest(`/progress/${encodeURIComponent(videoId)}`);
+}
+export function saveWatchProgress(progress: WatchProgress): Promise<WatchProgress> {
+  return playbackRequest(`/progress/${encodeURIComponent(progress.video_id)}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ position: progress.position, duration: progress.duration }), keepalive: true,
+  });
+}
 
 /** Global callback invoked on 401 so the app can redirect to login */
 let onUnauthorized: (() => void) | null = null;

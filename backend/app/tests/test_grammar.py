@@ -41,6 +41,25 @@ RESULT = {
     ],
 }
 
+# Exact shape and content from the production DeepSeek failure. The standalone
+# space was assigned empty syntax metadata, making an otherwise usable analysis
+# fail validation before any character-alignment check could run.
+WHITESPACE_SEGMENT_RESULT = {
+    "sentence": "何よ 偉そうに",
+    "translation": "干嘛啊，一副了不起的样子。",
+    "summary": "口语感叹句，省略了谓语和主语。何よ是「何だよ」的口语缩约，用终助词よ表达不满或反问；偉そうに是形容动词「偉そうだ」的连用形，后面省略了「言う」「する」等动词，整体表示对对方傲慢态度的责备。",
+    "segments": [
+        {"text": "何よ", "structure": "谓语 / 语气成分", "role": "疑问代词 + 终助词",
+         "meaning": "什么啊；干嘛啊", "explanation": "何是疑问代词，よ是终助词，表达不满、反问或催促对方解释的语气；口语中省略了だ。",
+         "reading_tokens": [{"text": "何", "reading": "なに"}, {"text": "よ", "reading": ""}]},
+        {"text": " ", "structure": "", "role": "", "meaning": "", "explanation": "空格，分隔两个口语片段。",
+         "reading_tokens": [{"text": " ", "reading": ""}]},
+        {"text": "偉そうに", "structure": "状语", "role": "形容动词连用形 + 助词",
+         "meaning": "一副了不起的样子；傲慢地", "explanation": "偉そうだ是形容动词，表示「看起来了不起」；连用形偉そうに后接に，修饰被省略的动词（如言う、する），表达对对方态度的责备。",
+         "reading_tokens": [{"text": "偉", "reading": "えら"}, {"text": "そうに", "reading": ""}]},
+    ],
+}
+
 
 class FakeStream:
     def __init__(self, content, finish_reason="stop"):
@@ -141,6 +160,90 @@ class GrammarTests(unittest.IsolatedAsyncioTestCase):
         cached = await grammar.analyze_grammar(text)
         self.assertEqual(cached.model_dump(), result.model_dump())
         self.create.assert_awaited_once()
+
+    async def test_production_standalone_space_segment_is_absorbed_and_cached(self):
+        text = WHITESPACE_SEGMENT_RESULT["sentence"]
+        self.create.return_value = FakeStream(json.dumps(WHITESPACE_SEGMENT_RESULT))
+        result = await grammar.analyze_grammar(text)
+        self.assertEqual([s.text for s in result.segments], ["何よ ", "偉そうに"])
+        self.assertEqual(result.segments[0].reading_tokens[-1].model_dump(), {"text": " ", "reading": ""})
+        for segment in result.segments:
+            self.assertEqual("".join(t.text for t in segment.reading_tokens), segment.text)
+            self.assertTrue(segment.structure and segment.role and segment.explanation)
+        self.assertEqual("".join(s.text for s in result.segments), text)
+        self.assertEqual(result.translation, WHITESPACE_SEGMENT_RESULT["translation"])
+        self.assertEqual((await grammar.analyze_grammar(text)).model_dump(), result.model_dump())
+        self.create.assert_awaited_once()
+
+    async def test_standalone_whitespace_preserves_edges_repetitions_and_newlines(self):
+        pieces = [" \t", "She", " ", "  ", "had", "\n", "enough.", " \t"]
+        text = "".join(pieces)
+        reply = analysis_for(text, pieces)
+        for segment in reply["segments"]:
+            if segment["text"].isspace():
+                segment.update(structure="discarded-layout-label", role="", meaning="", explanation="")
+        result = grammar._validate_analysis(json.dumps(reply), text)
+        self.assertEqual([s.text for s in result.segments], [" \tShe   ", "had\n", "enough. \t"])
+        for segment in result.segments:
+            self.assertEqual("".join(t.text for t in segment.reading_tokens), segment.text)
+            self.assertNotEqual(segment.structure, "discarded-layout-label")
+        self.assertEqual("".join(s.text for s in result.segments), text)
+
+    async def test_whitespace_segments_can_omit_tokens_or_supply_empty_array(self):
+        for tokens in (None, []):
+            with self.subTest(tokens=tokens):
+                reply = json.loads(json.dumps(WHITESPACE_SEGMENT_RESULT))
+                blank = {"text": " "}
+                if tokens is not None:
+                    blank["reading_tokens"] = tokens
+                reply["segments"][1] = blank
+                result = grammar._validate_analysis(json.dumps(reply), reply["sentence"])
+                self.assertEqual([s.text for s in result.segments], ["何よ ", "偉そうに"])
+                self.assertEqual(result.segments[0].reading_tokens[-1].model_dump(), {"text": " ", "reading": ""})
+
+    async def test_whitespace_coalescing_still_checks_raw_segment_and_token_alignment(self):
+        for field, value, reason in (
+            ("text", "\n", "segment_alignment"),
+            ("reading_tokens", [{"text": "よ", "reading": ""}], "reading_alignment"),
+            ("reading_tokens", [{"text": " ", "reading": "くうはく"}], "invalid_reading"),
+        ):
+            with self.subTest(field=field, value=value):
+                reply = json.loads(json.dumps(WHITESPACE_SEGMENT_RESULT))
+                reply["segments"][1][field] = value
+                with self.assertRaises(grammar.AnalysisFormatError) as failure:
+                    grammar._validate_analysis(json.dumps(reply), reply["sentence"])
+                self.assertEqual(failure.exception.reason, reason)
+
+    async def test_whitespace_coalescing_does_not_relax_content_fields_or_readings(self):
+        for field in ("structure", "role", "meaning", "explanation", "reading_tokens"):
+            with self.subTest(missing=field):
+                reply = json.loads(json.dumps(WHITESPACE_SEGMENT_RESULT))
+                del reply["segments"][0][field]
+                with self.assertRaises(ValidationError):
+                    grammar._validate_analysis(json.dumps(reply), reply["sentence"])
+        for field, value in (("text", "何"), ("text", "何ョ"), ("reading_tokens", [{"text": "何よ", "reading": "ナニヨ"}])):
+            with self.subTest(field=field, value=value):
+                reply = json.loads(json.dumps(WHITESPACE_SEGMENT_RESULT))
+                reply["segments"][0][field] = value
+                with self.assertRaises(grammar.AnalysisFormatError):
+                    grammar._validate_analysis(json.dumps(reply), reply["sentence"])
+        reply = json.loads(json.dumps(WHITESPACE_SEGMENT_RESULT))
+        reply["segments"][0]["role"] = ""
+        with self.assertRaises(ValidationError):
+            grammar._validate_analysis(json.dumps(reply), reply["sentence"])
+
+    async def test_invalid_content_beside_blank_segment_is_not_cached(self):
+        text = WHITESPACE_SEGMENT_RESULT["sentence"]
+        reply = json.loads(json.dumps(WHITESPACE_SEGMENT_RESULT))
+        reply["segments"][2]["reading_tokens"] = [{"text": "偉そう", "reading": "えらそう"}]
+        self.create.return_value = FakeStream(json.dumps(reply))
+        with self.assertRaises(HTTPException) as failure:
+            await grammar.analyze_grammar(text)
+        self.assertEqual(failure.exception.status_code, 502)
+        self.create.return_value = FakeStream(json.dumps(WHITESPACE_SEGMENT_RESULT))
+        result = await grammar.analyze_grammar(text)
+        self.assertEqual("".join(s.text for s in result.segments), text)
+        self.assertEqual(self.create.await_count, 2)
 
     async def test_original_double_spaces_newline_and_edge_whitespace_are_preserved(self):
         text = "  I've  wanted\nto tell her off. \t"

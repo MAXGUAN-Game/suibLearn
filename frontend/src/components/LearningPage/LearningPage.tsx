@@ -10,6 +10,7 @@ import {
 import VideoPlayer from '../VideoPlayer/VideoPlayer';
 import SubtitlePanel from '../SubtitlePanel/SubtitlePanel';
 import AISettingsButton from '../AISettings/AISettingsButton';
+import { usePlaybackState } from '../../hooks/usePlaybackState';
 
 /** Transform API subtitle format → component subtitle format */
 function transformSubtitles(apiSubs: ApiSubtitleLine[]): SubtitleLine[] {
@@ -25,7 +26,12 @@ function transformSubtitles(apiSubs: ApiSubtitleLine[]): SubtitleLine[] {
 
 export default function LearningPage() {
   const { videoId } = useParams<{ videoId: string }>();
+  return videoId ? <LearningSession key={videoId} videoId={videoId} /> : <p>视频不存在</p>;
+}
+
+function LearningSession({ videoId }: { videoId: string }) {
   const navigate = useNavigate();
+  const playback = usePlaybackState(videoId);
 
   const [video, setVideo] = useState<VideoItem | null>(null);
   const [subtitles, setSubtitles] = useState<SubtitleLine[]>([]);
@@ -37,8 +43,6 @@ export default function LearningPage() {
   const [currentTime, setCurrentTime] = useState(0);
   const [seekTo, setSeekTo] = useState<number | null>(null);
   const [abLoop, setAbLoop] = useState<{ a: number; b: number } | null>(null);
-  const [sentenceMode, setSentenceMode] = useState(false);
-  const [speed, setSpeed] = useState(1.0);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -54,8 +58,8 @@ export default function LearningPage() {
         setSubtitles(transformSubtitles(detail.subtitles));
         setIsProcessing(detail.video.status === 'processing');
         setError('');
-      } catch (err: any) {
-        if (!silent) setError(err.message || '加载失败');
+      } catch (err: unknown) {
+        if (!silent) setError(err instanceof Error ? err.message : '加载失败');
       } finally {
         if (!silent) setLoading(false);
       }
@@ -96,7 +100,7 @@ export default function LearningPage() {
 
   // --- Render ---
 
-  if (loading) {
+  if (loading || !playback.ready) {
     return (
       <div className="min-h-screen bg-[#0f0f0f] text-[#e0e0e0] flex items-center justify-center">
         <div className="text-center">
@@ -164,10 +168,14 @@ export default function LearningPage() {
             seekTo={seekTo}
             onSeeked={() => setSeekTo(null)}
             abLoop={abLoop}
-            sentenceMode={sentenceMode}
-            speed={speed}
-            onSpeedChange={setSpeed}
-            onSentenceModeToggle={() => setSentenceMode((v) => !v)}
+            sentenceMode={playback.settings.sentence_mode}
+            speed={playback.settings.speed}
+            subtitleMode={playback.settings.subtitle_mode}
+            onSubtitleModeChange={(mode) => playback.changeSettings({ subtitle_mode: mode })}
+            initialPosition={playback.initialPosition}
+            onProgress={playback.saveProgress}
+            onSpeedChange={(value) => playback.changeSettings({ speed: value })}
+            onSentenceModeToggle={() => playback.changeSettings({ sentence_mode: !playback.settings.sentence_mode })}
             onAbLoopClear={handleClearAbLoop}
           />
         </div>

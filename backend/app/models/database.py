@@ -109,7 +109,109 @@ async def init_db():
             )
         """)
 
+        # The application has one shared account, so preferences are a singleton.
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS playback_settings (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                speed REAL NOT NULL DEFAULT 1 CHECK (speed IN (0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3)),
+                subtitle_mode TEXT NOT NULL DEFAULT 'bilingual'
+                    CHECK (subtitle_mode IN ('original', 'bilingual', 'off')),
+                sentence_mode INTEGER NOT NULL DEFAULT 0 CHECK (sentence_mode IN (0, 1)),
+                updated_at INTEGER NOT NULL DEFAULT 0
+            )
+        """)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS playback_progress (
+                video_id TEXT PRIMARY KEY REFERENCES videos(id) ON DELETE CASCADE,
+                position REAL NOT NULL CHECK (position >= 0 AND position <= duration),
+                duration REAL NOT NULL CHECK (duration > 0),
+                updated_at INTEGER NOT NULL
+            )
+        """)
+
         await db.commit()
+
+
+def _playback_preferences(row) -> dict:
+    if row is None:
+        return {"speed": 1.0, "subtitle_mode": "bilingual", "sentence_mode": False, "updated_at": 0}
+    result = dict(row)
+    result["sentence_mode"] = bool(result["sentence_mode"])
+    return result
+
+
+async def get_playback_settings() -> dict:
+    async with aiosqlite.connect(_db_path) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            "SELECT speed, subtitle_mode, sentence_mode, updated_at FROM playback_settings WHERE id = 1"
+        )
+        return _playback_preferences(await cursor.fetchone())
+
+
+async def save_playback_settings(changes: dict) -> dict:
+    # Only these known columns may enter the dynamic UPDATE. Updating only supplied
+    # columns also prevents simultaneous partial saves from reverting one another.
+    columns = [name for name in ("speed", "subtitle_mode", "sentence_mode") if name in changes]
+    if not columns:
+        return await get_playback_settings()
+    defaults = {"speed": 1.0, "subtitle_mode": "bilingual", "sentence_mode": False}
+    values = {**defaults, **{name: changes[name] for name in columns}}
+    timestamp = time.time_ns() // 1_000_000
+    updates = ", ".join(f"{name} = excluded.{name}" for name in columns)
+    async with aiosqlite.connect(_db_path) as db:
+        db.row_factory = aiosqlite.Row
+        await db.execute(f"""
+            INSERT INTO playback_settings (id, speed, subtitle_mode, sentence_mode, updated_at)
+            VALUES (1, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET {updates},
+                updated_at = MAX(excluded.updated_at, playback_settings.updated_at + 1)
+        """, (values["speed"], values["subtitle_mode"], values["sentence_mode"], timestamp))
+        cursor = await db.execute(
+            "SELECT speed, subtitle_mode, sentence_mode, updated_at FROM playback_settings WHERE id = 1"
+        )
+        result = _playback_preferences(await cursor.fetchone())
+        await db.commit()
+        return result
+
+
+async def get_playback_progress(video_id: str) -> Optional[dict]:
+    async with aiosqlite.connect(_db_path) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute("""
+            SELECT v.id AS video_id, COALESCE(p.position, 0) AS position,
+                COALESCE(p.duration, 0) AS duration, COALESCE(p.updated_at, 0) AS updated_at
+            FROM videos v LEFT JOIN playback_progress p ON p.video_id = v.id
+            WHERE v.id = ?
+        """, (video_id,))
+        row = await cursor.fetchone()
+        return dict(row) if row else None
+
+
+async def save_playback_progress(video_id: str, position: float, duration: float) -> Optional[dict]:
+    async with aiosqlite.connect(_db_path) as db:
+        db.row_factory = aiosqlite.Row
+        await db.execute("PRAGMA foreign_keys = ON")
+        # Keep existence check and write in the same short transaction so deleting
+        # a video concurrently cannot leave an orphan or produce a foreign-key 500.
+        await db.execute("BEGIN IMMEDIATE")
+        cursor = await db.execute("SELECT id FROM videos WHERE id = ?", (video_id,))
+        if await cursor.fetchone() is None:
+            return None
+        await db.execute("""
+            INSERT INTO playback_progress (video_id, position, duration, updated_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(video_id) DO UPDATE SET position = excluded.position,
+                duration = excluded.duration,
+                updated_at = MAX(excluded.updated_at, playback_progress.updated_at + 1)
+        """, (video_id, position, duration, time.time_ns() // 1_000_000))
+        cursor = await db.execute(
+            "SELECT video_id, position, duration, updated_at FROM playback_progress WHERE video_id = ?",
+            (video_id,),
+        )
+        result = dict(await cursor.fetchone())
+        await db.commit()
+        return result
 
 
 async def get_grammar_analysis(cache_key: str) -> Optional[str]:

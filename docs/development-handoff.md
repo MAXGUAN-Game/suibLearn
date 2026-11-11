@@ -155,6 +155,16 @@ npx.cmd eslint src/components/VideoPlayer/VideoPlayer.tsx src/components/Grammar
 - 如需调整语法讲解风格或 JSON 结构，修改 `SYSTEM_PROMPT` 后同步增加 `PROMPT_VERSION`，避免复用旧分析缓存。
 - 可添加相邻字幕上下文以改善歧义理解；若实现，必须让上下文参与缓存键。
 
+## 追加：空白片段解析修复与观看记忆（2026-11-11）
+
+- 真实复现「何よ 偉そうに」连续三次失败：DeepSeek 将中间空格单独输出成 segment，却把 `structure/role` 留空，触发 `invalid_schema; kinds=length`。新增确定性归一化：先校验原始片段和注音词块逐字重建，再把纯空白段并入相邻有效片段。输出仍保留每个空格、换行和制表符；实词缺字段、改字、漏字或不合格读音仍拒绝，不增加 AI 重试。实际故障响应作为固定回归 fixture 保存。
+- 播放器保存字幕模式、倍速和逐句暂停开关；每个视频独立保存观看位置。再次打开会等媒体元数据就绪后定位，保持暂停；显式点击字幕／进度条可覆盖恢复位置。初始 seek 尚未真正完成时，不会把临时的零秒写回书签，首次解码帧就绪后可重试定位。
+- 配置和进度保存在服务器 SQLite 新表 `playback_settings`、`playback_progress`，当前单密码共享账户可跨浏览器／设备恢复。两个新表独立于 AI 配置；进度外键随视频删除级联清理。
+- 鉴权 API：`GET/PUT /api/playback/settings`，配置字段 `speed/subtitle_mode/sentence_mode`，PUT 支持部分更新；`GET/PUT /api/playback/progress/{video_id}`，字段 `position/duration`。返回 `updated_at` 为 epoch 毫秒；无书签为 `0/0/0`，写进度要求有限数值且 `0 <= position <= duration`、`duration > 0`。
+- 浏览器 `sublearn_player_settings_v1`、`sublearn_watch_progress_v1` 作为本地兜底，以时间戳协调服务器与较新的离线记录；本地最多保留 200 集，服务器书签不受此限制。播放期间本地最多每秒写入一次，服务器最多每 5 秒同步一次；暂停、跳转、隐藏、退出时刷新最新位置，网络恢复后重试待同步数据。排队请求合并为最新值，旧页面迟到响应不覆盖新视频状态。
+- 代码入口：`frontend/src/hooks/usePlaybackState.ts`、`services/playbackPersistence.ts`、`utils/playerState.ts`；后端 `routers/playback.py` 与 `models/database.py`。没有旧进度可迁移，新记忆从本次更新后开始记录。
+- 本地 66 项后端测试、16 项前端工具测试、TypeScript/Vite 构建与修改文件 ESLint 通过。浏览器使用可 Range 跳转的媒体夹具验证刷新、暂停刷新、每集独立书签、跨浏览器读取、离线兜底与重连、切换路由时旧请求隔离；现有解析浮窗交互回归通过。发布与真实供应商验证结果在完成后追加。
+
 ## 追加：句子结构、汉字读音与词义（2026-11-11）
 
 - 语法浮窗顶部的彩色片段下方显示句子成分标签，如主语、谓语、宾语、定语从句；与下方的词性／活用标签分开。日语省略成分在整句说明解释，不强行补出不存在的主谓宾。
