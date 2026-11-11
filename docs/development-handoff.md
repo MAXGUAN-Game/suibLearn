@@ -172,3 +172,13 @@ npx.cmd eslint src/components/VideoPlayer/VideoPlayer.tsx src/components/Grammar
 - 实际点击“解析”并调用当前生产 DeepSeek 配置：两集均返回有效彩色分段，分段拼接逐字等于当前日文台词；浏览器无运行时错误。此次未使用模拟 AI 响应。
 - 入库前在线一致性备份：`/app/data/backups/before-japanese-pilots-20261111T121637Z.db`。以该备份做完整记录差集校验通过，原有 21 个视频、7961 行字幕、2 个合集的完整记录均保留。
 - 两处本地 `上传测试用/上传测试结果.json` 保存对应首集媒体哈希、线上 ID 和浏览器测试结果；媒体与凭证不进入 Git。
+
+## 追加：摩登家庭第一季整季上传（2026-11-11）
+
+- 已向原英语合集“摩登家庭 · 第一季”补齐 E02–E24，共 24 集；合集 ID `0bfa8a2e-b780-4a91-9974-02b7ead1b020`，封面与 E01 保持原样。
+- [合集](http://118.178.178.123/collection/0bfa8a2e-b780-4a91-9974-02b7ead1b020)；完整集号、视频 ID、大小、时长、SHA256 和字幕数量见 [整季导入清单](modern-family-season01-import.json)。共 11670 条字幕、11570 组英中配对，视频合计 20.29 GiB。
+- 本地原 MKV 全部保留。新增集数转码为 1080p H.264/AAC 双声道 MP4（NVENC p5、CQ23、最大视频码率 6 Mbps、yuv420p、faststart），不烧录字幕；使用此前提取并验证的 `SubLearn上传用/*.英中双语.ass`。
+- 批量导入前使用 SQLite 在线备份 API 建立一致性备份，路径记录在清单中，备份文件权限 0600。没有调整 AI 设置、删除原视频或重启应用。
+- 为避免普通 HTTP 上传将大文件整体读入后端内存，使用 SFTP 写入现有 media-data 卷；固定 UUID、按集加锁、`.part` 断点续传并原子改名。每集在生产容器内验证 MP4/字幕 SHA256、用现有解析器核对英中配对后，调用现有数据库服务登记并标记 ready。路径沿用 `sublearn/media/<uuid>/video.mp4` 与 `subtitle.ass`。
+- 新增 23 集均检查 API 元数据、字幕数量、媒体 HTTP 206 Range，并在 Chrome 实际解码播放、跳转到字幕时间、核对英中字幕；E02/E13/E24 另检查英语与无字幕模式。合集页面确认 24 集与原封面，浏览器无运行时错误。临时脚本、转码视频、鉴权令牌不提交 Git。
+- 本地断点记录和浏览器检查结果位于 `C:\BaiduNetdiskDownload\第 1 季 - 1080p BluRay x265 10bit\SubLearn整季上传`。服务器媒体已持久化；在另一台电脑拉取 Git 后直接使用现有服务器，无需重新上传。

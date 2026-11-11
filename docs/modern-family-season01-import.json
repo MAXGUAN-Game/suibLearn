@@ -1,0 +1,282 @@
+{
+  "verified_date": "2026-11-11",
+  "collection_id": "0bfa8a2e-b780-4a91-9974-02b7ead1b020",
+  "collection_url": "http://118.178.178.123/collection/0bfa8a2e-b780-4a91-9974-02b7ead1b020",
+  "episode_count": 24,
+  "format": "1920x1080 H.264 yuv420p / AAC stereo, external English-Chinese ASS; no burned-in captions",
+  "source_language": "en",
+  "database_backup": "/app/data/backups/before-season-import-20261111T120115Z.db",
+  "new_episodes_verified_in_browser": 23,
+  "storage": {
+    "used_bytes": 26039501990,
+    "total_bytes": 32212254720,
+    "used_gb": 24.25,
+    "total_gb": 30.0,
+    "usage_percent": 80.8
+  },
+  "episodes": [
+    {
+      "episode": "S01E01",
+      "video_id": "f5ad6806-a02f-40f1-81df-27a7383e48c4",
+      "title": "摩登家庭 S01E01 · Pilot",
+      "size": 1037901513,
+      "duration": 1379.4235,
+      "sha256": "e522fa32a9e1ab27d8438fc3d965525cf850b7900c1d011b934ee9feb488de0b",
+      "subtitle_entries": 506,
+      "bilingual_pairs": 496
+    },
+    {
+      "episode": "S01E02",
+      "video_id": "2b618cf9-2856-4e28-a88e-e8331f9ba5ff",
+      "title": "摩登家庭 S01E02 · 第 2 集",
+      "size": 883782116,
+      "duration": 1250.303,
+      "sha256": "c231d820db623ca30bb561d4adc3d08a206330550776b077e28b8f7b141a74fb",
+      "subtitle_sha256": "8ff35cf01be4b6f1eaeafd14fb76b5082f96b919c8232f271674979359a8c002",
+      "subtitle_entries": 502,
+      "bilingual_pairs": 498
+    },
+    {
+      "episode": "S01E03",
+      "video_id": "739ecb98-608a-4baf-94b4-1c8f80208536",
+      "title": "摩登家庭 S01E03 · 第 3 集",
+      "size": 944632251,
+      "duration": 1295.359,
+      "sha256": "dd8a75ee18252be36f7ddf30e9baff12b098ea2bab2b79c344ea649a835e8ddb",
+      "subtitle_sha256": "0f7bfe99445d106980bfb4a8a2e02c1effde5ce6d131b68b1b57962118a81ade",
+      "subtitle_entries": 465,
+      "bilingual_pairs": 456
+    },
+    {
+      "episode": "S01E04",
+      "video_id": "2644bc9e-5e78-48cc-9d8d-52e1f627decd",
+      "title": "摩登家庭 S01E04 · 第 4 集",
+      "size": 889867452,
+      "duration": 1272.319,
+      "sha256": "3d211192474e8f1dbb5543614f9fbecc6b4453e67234a236d3e057d2a8b0298f",
+      "subtitle_sha256": "184b1d3bc41ba2457384e8e83fa823fec4259ddd4a826a24bb7f086b45cdacd1",
+      "subtitle_entries": 468,
+      "bilingual_pairs": 465
+    },
+    {
+      "episode": "S01E05",
+      "video_id": "612481c7-f11c-4944-9cb5-cf6d08817dab",
+      "title": "摩登家庭 S01E05 · 第 5 集",
+      "size": 941487651,
+      "duration": 1299.359,
+      "sha256": "c262c8ce1a1c056379d7cdab9ef38b1a9f63c01ab23f31967e11794c8710e5c7",
+      "subtitle_sha256": "1c33754f7e15c2296411fab6108522d24b1a8607d2725e366df246a60740aa34",
+      "subtitle_entries": 515,
+      "bilingual_pairs": 509
+    },
+    {
+      "episode": "S01E06",
+      "video_id": "ff1406bc-9a1b-4ad2-ab08-b8344ab68027",
+      "title": "摩登家庭 S01E06 · 第 6 集",
+      "size": 893558721,
+      "duration": 1260.319,
+      "sha256": "691b62e915e3d20756786fde42e0e09951b9ae8c768de597e42097502bf83225",
+      "subtitle_sha256": "d2cdcb42a608408ecaa0f7ac812dde3158e90498b5d401c5ace5307df8b07970",
+      "subtitle_entries": 514,
+      "bilingual_pairs": 510
+    },
+    {
+      "episode": "S01E07",
+      "video_id": "c77a6e45-3099-4b44-b52a-cca2dc47797c",
+      "title": "摩登家庭 S01E07 · 第 7 集",
+      "size": 901724334,
+      "duration": 1245.311,
+      "sha256": "404d04099b52c80e0bd5cb0ba5a183ccd5d96f4369542df5d3077f102a7232ba",
+      "subtitle_sha256": "7b69441c870944b602fb26252deab447ad2a4b8f13ca242e8026ca0adb46b9dd",
+      "subtitle_entries": 418,
+      "bilingual_pairs": 414
+    },
+    {
+      "episode": "S01E08",
+      "video_id": "9e8d8e26-d4c0-4410-86e4-5a89f48947ef",
+      "title": "摩登家庭 S01E08 · 第 8 集",
+      "size": 941591317,
+      "duration": 1293.343,
+      "sha256": "57a86f7cf8f784e68b51cbb9f65d53127bfca67f3624a177ba106ce07ddd50f4",
+      "subtitle_sha256": "2a791946a2a75eb8d2d87886628df134093221d8e436df042cf2c0092015f900",
+      "subtitle_entries": 484,
+      "bilingual_pairs": 478
+    },
+    {
+      "episode": "S01E09",
+      "video_id": "9b4b4601-2bd7-48b1-8bff-52d8138534a9",
+      "title": "摩登家庭 S01E09 · 第 9 集",
+      "size": 932294095,
+      "duration": 1252.319,
+      "sha256": "72130fd32b65f694b0675736b72b054c1d0102e970eb6894338f601d29e52b40",
+      "subtitle_sha256": "8be5e765c193774c18f63abae82349f7b4efe778b0d45d1d7be0672ea4c038a5",
+      "subtitle_entries": 473,
+      "bilingual_pairs": 469
+    },
+    {
+      "episode": "S01E10",
+      "video_id": "4eb5ea6a-cd1e-4a02-aa20-2f1b01b6da8d",
+      "title": "摩登家庭 S01E10 · 第 10 集",
+      "size": 959425620,
+      "duration": 1299.359,
+      "sha256": "f889e83fe1def1bfd634d4e71c4eac5a1c4cc5d9f974821dedc7d16d1df9c0db",
+      "subtitle_sha256": "17be16d1a11d595f4309d789133f609fa91ad64cedda876942bbbdf945172516",
+      "subtitle_entries": 495,
+      "bilingual_pairs": 492
+    },
+    {
+      "episode": "S01E11",
+      "video_id": "74a17248-a4ef-47cd-a459-17042409e0a5",
+      "title": "摩登家庭 S01E11 · 第 11 集",
+      "size": 917342659,
+      "duration": 1299.359,
+      "sha256": "85b10bd02a0ab5c2185c6dda38f97b5ea9f787c9b75fa35cc0ab5abaa03bfb11",
+      "subtitle_sha256": "6f72e7af37eedb792a6183361345301f529612cdbad75c2e3e4c3138716969f4",
+      "subtitle_entries": 531,
+      "bilingual_pairs": 527
+    },
+    {
+      "episode": "S01E12",
+      "video_id": "e7f11e94-e0e7-43d9-a74f-1767f253753c",
+      "title": "摩登家庭 S01E12 · 第 12 集",
+      "size": 920640197,
+      "duration": 1280.351,
+      "sha256": "1fdeb15528de92d109e6649706435f4b75bf445a4206d35048e0dd967e1a6531",
+      "subtitle_sha256": "40a528af229e609567d0a20d75ecfe54ac74499f9dcd6983cdf73917c014db1f",
+      "subtitle_entries": 481,
+      "bilingual_pairs": 474
+    },
+    {
+      "episode": "S01E13",
+      "video_id": "cfd483a4-3f92-4d0c-b61f-466fcc3d636f",
+      "title": "摩登家庭 S01E13 · 第 13 集",
+      "size": 902608728,
+      "duration": 1301.343,
+      "sha256": "53c104c4ce5a1d2fbf44b9ebae3056ab987be727397b23bf1e2a76a58ef81d21",
+      "subtitle_sha256": "b391cf0967a3588287e9915a682f2a5251396c0d2a5fe68aa5300a21cc4ae7b4",
+      "subtitle_entries": 506,
+      "bilingual_pairs": 503
+    },
+    {
+      "episode": "S01E14",
+      "video_id": "8f17d2ec-d6e9-4375-8e05-9f9f53a9d696",
+      "title": "摩登家庭 S01E14 · 第 14 集",
+      "size": 926599730,
+      "duration": 1299.359,
+      "sha256": "3ed0baeea93077d003c3562a38409063a12ef19b46a7b4e6312138ba4b8f8b18",
+      "subtitle_sha256": "08dcc2de6c694e97ccb6731499f16b7755fc7b230974608a63abb067694401c0",
+      "subtitle_entries": 507,
+      "bilingual_pairs": 503
+    },
+    {
+      "episode": "S01E15",
+      "video_id": "4c2429f5-7d82-4569-afa2-fde60d98910b",
+      "title": "摩登家庭 S01E15 · 第 15 集",
+      "size": 898360922,
+      "duration": 1299.359,
+      "sha256": "286d644f15d3d01375cb8151b7726403f1676725233cc477582feebfbfedee73",
+      "subtitle_sha256": "2fac25542101903340df111b2a620776639e71cb9a77f0384d3fc959f54d2db1",
+      "subtitle_entries": 491,
+      "bilingual_pairs": 490
+    },
+    {
+      "episode": "S01E16",
+      "video_id": "6a78b0cf-8c6c-48bc-8077-0c271917a2e9",
+      "title": "摩登家庭 S01E16 · 第 16 集",
+      "size": 841472897,
+      "duration": 1269.311,
+      "sha256": "214447d9f5c7aa2b56fae6d7bd18e4e1dabc7c5151d032762bdaf24596ff403a",
+      "subtitle_sha256": "afec8fa758f93722bef075caf042b060d8f123f1444dfc5fe7c8d839826b6f74",
+      "subtitle_entries": 464,
+      "bilingual_pairs": 463
+    },
+    {
+      "episode": "S01E17",
+      "video_id": "cd7f73f6-b29e-4dee-8093-bd7c210ee524",
+      "title": "摩登家庭 S01E17 · 第 17 集",
+      "size": 893189131,
+      "duration": 1301.343,
+      "sha256": "01f01288dab9f47c270d40f537f59e507a4da7dbe7a9abc63d31667af53552cd",
+      "subtitle_sha256": "ce9f9199d4b39e62539232b7a23c62ce1c1d4c59de7257b2dbe1f82f25649509",
+      "subtitle_entries": 507,
+      "bilingual_pairs": 505
+    },
+    {
+      "episode": "S01E18",
+      "video_id": "e32f3b3e-8ae4-4f21-84d6-038683a6f469",
+      "title": "摩登家庭 S01E18 · 第 18 集",
+      "size": 836857717,
+      "duration": 1280.351,
+      "sha256": "325abc047d56099ff8e52b30fe2d80dc27973f0b932670024461e2b6d94a4321",
+      "subtitle_sha256": "486200ec8297bccc7ef882e6cc1c11bee0fe0c87c806a433eed6f43d8afe82f0",
+      "subtitle_entries": 475,
+      "bilingual_pairs": 467
+    },
+    {
+      "episode": "S01E19",
+      "video_id": "8d3bcd73-5e57-455c-bd36-fc2b92ade2eb",
+      "title": "摩登家庭 S01E19 · 第 19 集",
+      "size": 809662751,
+      "duration": 1298.367,
+      "sha256": "117aa1ac53445296e888a8b10d8f8724ebd5821440b174614e8e378de6fcacee",
+      "subtitle_sha256": "cee7868d3838048c7aff7112fe2f238d4fa6cf30aaf526b3fac6db9254f93cc2",
+      "subtitle_entries": 497,
+      "bilingual_pairs": 495
+    },
+    {
+      "episode": "S01E20",
+      "video_id": "45eb258e-d7a3-4052-bbfa-4f68c7625782",
+      "title": "摩登家庭 S01E20 · 第 20 集",
+      "size": 879580569,
+      "duration": 1267.327,
+      "sha256": "b8ef90d60b2b76f5c29425d3d3c69314605e25687d8d9aebe901798dd7811e4e",
+      "subtitle_sha256": "ab934b7a1e8b9f526ba53e124cdbdeddca2845f1b47b9a6f119a6d552cc2bf25",
+      "subtitle_entries": 494,
+      "bilingual_pairs": 492
+    },
+    {
+      "episode": "S01E21",
+      "video_id": "c3181851-ac38-4df5-b942-f49aec96a4c0",
+      "title": "摩登家庭 S01E21 · 第 21 集",
+      "size": 889596072,
+      "duration": 1300.351,
+      "sha256": "885fcced23ab74018c9b2133beff1ac1b8a8f0426dc276e1fad229a08e35c823",
+      "subtitle_sha256": "afac7cff000bd5180a57c6868273b2dd866ff27739990dfedb18614825953870",
+      "subtitle_entries": 459,
+      "bilingual_pairs": 454
+    },
+    {
+      "episode": "S01E22",
+      "video_id": "5876bcce-4cc9-4e04-b6ed-b083ed2ba146",
+      "title": "摩登家庭 S01E22 · 第 22 集",
+      "size": 875308719,
+      "duration": 1242.303,
+      "sha256": "7c5a60fc52ad5c5c7e4312478f545e5f19881cfe7718f248cefaba42481a96bf",
+      "subtitle_sha256": "f08415bc03d4c436f584fb5cd1e96f8f879a0105b854048c4c8e0b97e829d001",
+      "subtitle_entries": 479,
+      "bilingual_pairs": 473
+    },
+    {
+      "episode": "S01E23",
+      "video_id": "d3d38807-3ef1-4a59-91c6-1460b79b4e2d",
+      "title": "摩登家庭 S01E23 · 第 23 集",
+      "size": 946673831,
+      "duration": 1291.359,
+      "sha256": "3bcc23e9a328edde982ac6f3c1311ae5802c69dafafff2b8e5548ea1af263fa4",
+      "subtitle_sha256": "cbe3ca85e679390da0883caf2d07bbccc28827ce7ed6743097052f5c0bd6fb40",
+      "subtitle_entries": 485,
+      "bilingual_pairs": 484
+    },
+    {
+      "episode": "S01E24",
+      "video_id": "8d312a35-38b9-4233-8b12-43130a49880a",
+      "title": "摩登家庭 S01E24 · 第 24 集",
+      "size": 922663436,
+      "duration": 1286.335,
+      "sha256": "498849ea2489c814ceca525151473422c9ad50995a0da9c3c15b9fe03d4f2eb1",
+      "subtitle_sha256": "85b8633c54c5ec19a5cd94d8d4577f9e0b984e33ab1eb1fdaac684007730f97c",
+      "subtitle_entries": 454,
+      "bilingual_pairs": 453
+    }
+  ]
+}
