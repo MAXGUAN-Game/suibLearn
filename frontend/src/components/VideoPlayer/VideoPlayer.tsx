@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useState, useMemo } from 'react';
+import { useRef, useEffect, useCallback, useState, useMemo, useId } from 'react';
 import type { SubtitleLine } from '../../types';
 
 interface Props {
@@ -17,6 +17,12 @@ interface Props {
 }
 
 const SPEED_OPTIONS = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0];
+const SUBTITLE_OPTIONS = [
+  { value: 'ja', label: '日语' },
+  { value: 'ja-zh', label: '日中字幕' },
+  { value: 'off', label: '无字幕' },
+] as const;
+type SubtitleMode = typeof SUBTITLE_OPTIONS[number]['value'];
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -35,10 +41,41 @@ export default function VideoPlayer({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
+  const [subtitleMode, setSubtitleMode] = useState<SubtitleMode>('ja-zh');
+  const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
+  const subtitleControlRef = useRef<HTMLDivElement>(null);
+  const subtitleButtonRef = useRef<HTMLButtonElement>(null);
+  const subtitleMenuId = useId();
   const lastSentenceIdx = useRef(-1);
   const syncingRef = useRef(false);  // Prevent sync loops
 
   const hasSeparateAudio = Boolean(audioSrc);
+  const subtitleLabel = SUBTITLE_OPTIONS.find(option => option.value === subtitleMode)!.label;
+
+  useEffect(() => {
+    if (!showSubtitleMenu) return;
+
+    subtitleControlRef.current?.querySelector<HTMLButtonElement>('[aria-pressed="true"]')?.focus();
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!subtitleControlRef.current?.contains(event.target as Node)) {
+        setShowSubtitleMenu(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowSubtitleMenu(false);
+        subtitleButtonRef.current?.focus();
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showSubtitleMenu]);
 
   // Current subtitle for overlay
   const currentSub = useMemo(() => {
@@ -198,15 +235,13 @@ export default function VideoPlayer({
         </div>
 
         {/* Subtitle Bar - fixed height black band below video (like cinema letterbox) */}
-        <div className="bg-black flex items-center justify-center px-6"
-          style={{ minHeight: '72px', maxHeight: '88px' }}
-        >
-          {currentSub ? (
+        <div className="bg-black flex items-center justify-center px-6 h-[88px] shrink-0 overflow-y-auto">
+          {subtitleMode !== 'off' && currentSub ? (
             <div className="text-center max-w-[90%]">
               <p className="text-white text-base font-medium leading-snug">
                 {currentSub.text}
               </p>
-              {currentSub.translated_text && (
+              {subtitleMode === 'ja-zh' && currentSub.translated_text && (
                 <p className="text-[#b0b0b0] text-sm leading-snug mt-0.5">
                   {currentSub.translated_text}
                 </p>
@@ -249,6 +284,63 @@ export default function VideoPlayer({
           </div>
 
           <div className="flex items-center gap-1">
+            {/* Subtitle Mode */}
+            <div
+              ref={subtitleControlRef}
+              className="relative shrink-0"
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget)) {
+                  setShowSubtitleMenu(false);
+                }
+              }}
+            >
+              <button
+                ref={subtitleButtonRef}
+                type="button"
+                aria-label={`字幕模式：${subtitleLabel}`}
+                aria-expanded={showSubtitleMenu}
+                aria-controls={showSubtitleMenu ? subtitleMenuId : undefined}
+                title="切换字幕模式"
+                onClick={() => {
+                  setShowSubtitleMenu(open => !open);
+                  setShowSpeedMenu(false);
+                }}
+                className={`w-[104px] min-h-[44px] flex items-center justify-center gap-1.5 rounded-lg transition text-sm px-2 ${
+                  showSubtitleMenu ? 'bg-[#2a2a2a] text-white' : 'hover:bg-[#2a2a2a] text-[#a0a0a0]'
+                }`}
+              >
+                {subtitleLabel}
+                <span aria-hidden="true" className="text-xs">▴</span>
+              </button>
+              {showSubtitleMenu && (
+                <div
+                  id={subtitleMenuId}
+                  role="group"
+                  aria-label="字幕模式"
+                  className="absolute bottom-full right-0 mb-2 w-36 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-lg py-1 z-10"
+                >
+                  {SUBTITLE_OPTIONS.map(option => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      aria-pressed={subtitleMode === option.value}
+                      onClick={() => {
+                        setSubtitleMode(option.value);
+                        setShowSubtitleMenu(false);
+                        subtitleButtonRef.current?.focus();
+                      }}
+                      className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-[#2a2a2a] transition min-h-[44px] ${
+                        subtitleMode === option.value ? 'text-[#e74c3c]' : 'text-[#e0e0e0]'
+                      }`}
+                    >
+                      {option.label}
+                      {subtitleMode === option.value && <span aria-hidden="true">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Sentence Mode */}
             <button
               onClick={onSentenceModeToggle}
@@ -274,7 +366,10 @@ export default function VideoPlayer({
             {/* Speed */}
             <div className="relative">
               <button
-                onClick={() => setShowSpeedMenu(!showSpeedMenu)}
+                onClick={() => {
+                  setShowSpeedMenu(!showSpeedMenu);
+                  setShowSubtitleMenu(false);
+                }}
                 className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-[#2a2a2a] transition text-sm px-3 text-[#a0a0a0]"
               >
                 {speed}x
