@@ -118,6 +118,17 @@ npx.cmd eslint src/components/VideoPlayer/VideoPlayer.tsx src/components/Grammar
 
 如需回滚应用，可将发布前镜像重新标为 `sublearn-backend:latest`，使用 `docker compose up -d --no-build --no-deps backend`，恢复备份中的前端和源码，再校验并 reload Nginx。新增的设置和缓存表与旧版兼容，应用回滚通常无需恢复数据库；避免覆盖发布后新增的数据。
 
+## 追加：英语测试片与字幕按钮语言修复（2026-11-11）
+
+- 已创建英语合集“摩登家庭 · 第一季”，使用用户指定的 `season01-poster.jpg` 作为合集封面。
+- 已上传第一集供测试：[播放器](http://118.178.178.123/learn/f5ad6806-a02f-40f1-81df-27a7383e48c4)，合集 ID `0bfa8a2e-b780-4a91-9974-02b7ead1b020`。
+- 测试片为本地原 MKV 派生的 1080p H.264/AAC MP4，不向画面烧录字幕，原视频保留。服务端解析出 506 条字幕，其中 496 组英中配对；实际网页播放、字幕关闭和封面检查通过。
+- 修复了英语片仍显示“日语”的字幕菜单。`LearningPage` 将 `video.source_language` 传给 `VideoPlayer.sourceLanguage`；字幕模式状态使用 `original / bilingual / off`，与语言标签分离。
+- 标签映射：`en` → 英语 / 英中字幕，`ja` → 日语 / 日中字幕，`ko` → 韩语 / 韩中字幕，`zh` → 中文 / 双语字幕，未知或空语言 → 原文 / 双语字幕；缺省组件参数沿用日语，以兼容旧调用。
+- 语言代码支持大小写、空格及地区后缀，如 `EN-us`、`ja_JP`。无字幕模式不随语言变化。
+- 本地浏览器已覆盖上述语言与回退情况，以及原文 / 双语 / 关闭显示；TypeScript、Vite 构建、播放器 ESLint 和语法浮窗交互回归通过。
+- 本次仅更新前端源码和构建产物，无需重建后端。AI 语法提示词仍针对日语，英语语法解析尚需后续适配。
+
 ## 后续可继续做
 
 - 用户在部署后的“AI 设置”填写自己的 DeepSeek Key，测试连接并保存，再用真实视频台词验证分析质量。

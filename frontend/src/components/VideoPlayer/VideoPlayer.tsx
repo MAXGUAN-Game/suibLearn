@@ -5,6 +5,7 @@ import GrammarAnalysis from '../GrammarAnalysis/GrammarAnalysis';
 interface Props {
   src: string;
   audioSrc?: string;  // Separate audio stream for DASH (Bilibili)
+  sourceLanguage?: string;
   subtitles: SubtitleLine[];
   onTimeUpdate: (time: number) => void;
   seekTo: number | null;
@@ -18,12 +19,13 @@ interface Props {
 }
 
 const SPEED_OPTIONS = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0];
-const SUBTITLE_OPTIONS = [
-  { value: 'ja', label: '日语' },
-  { value: 'ja-zh', label: '日中字幕' },
-  { value: 'off', label: '无字幕' },
-] as const;
-type SubtitleMode = typeof SUBTITLE_OPTIONS[number]['value'];
+const SUBTITLE_LABELS: Record<string, { original: string; bilingual: string }> = {
+  ja: { original: '日语', bilingual: '日中字幕' },
+  en: { original: '英语', bilingual: '英中字幕' },
+  ko: { original: '韩语', bilingual: '韩中字幕' },
+  zh: { original: '中文', bilingual: '双语字幕' },
+};
+type SubtitleMode = 'original' | 'bilingual' | 'off';
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -32,7 +34,7 @@ function formatTime(seconds: number): string {
 }
 
 export default function VideoPlayer({
-  src, audioSrc, subtitles, onTimeUpdate, seekTo, onSeeked,
+  src, audioSrc, sourceLanguage = 'ja', subtitles, onTimeUpdate, seekTo, onSeeked,
   abLoop, sentenceMode, speed, onSpeedChange, onSentenceModeToggle, onAbLoopClear,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -42,7 +44,7 @@ export default function VideoPlayer({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
-  const [subtitleMode, setSubtitleMode] = useState<SubtitleMode>('ja-zh');
+  const [subtitleMode, setSubtitleMode] = useState<SubtitleMode>('bilingual');
   const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
   const [analysisTarget, setAnalysisTarget] = useState<{ src: string; subtitle: SubtitleLine } | null>(null);
   const analysisButtonRef = useRef<HTMLButtonElement>(null);
@@ -53,7 +55,14 @@ export default function VideoPlayer({
   const syncingRef = useRef(false);  // Prevent sync loops
 
   const hasSeparateAudio = Boolean(audioSrc);
-  const subtitleLabel = SUBTITLE_OPTIONS.find(option => option.value === subtitleMode)!.label;
+  const language = sourceLanguage.trim().toLowerCase().split(/[-_]/)[0];
+  const labels = SUBTITLE_LABELS[language] ?? { original: '原文', bilingual: '双语字幕' };
+  const subtitleOptions = [
+    { value: 'original', label: labels.original },
+    { value: 'bilingual', label: labels.bilingual },
+    { value: 'off', label: '无字幕' },
+  ] as const;
+  const subtitleLabel = subtitleOptions.find(option => option.value === subtitleMode)!.label;
 
   useEffect(() => {
     if (!showSubtitleMenu) return;
@@ -256,7 +265,7 @@ export default function VideoPlayer({
               <p className="text-white text-base font-medium leading-snug">
                 {currentSub.text}
               </p>
-              {subtitleMode === 'ja-zh' && currentSub.translated_text && (
+              {subtitleMode === 'bilingual' && currentSub.translated_text && (
                 <p className="text-[#b0b0b0] text-sm leading-snug mt-0.5">
                   {currentSub.translated_text}
                 </p>
@@ -375,7 +384,7 @@ export default function VideoPlayer({
                   aria-label="字幕模式"
                   className="absolute bottom-full right-0 mb-2 w-36 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-lg py-1 z-10"
                 >
-                  {SUBTITLE_OPTIONS.map(option => (
+                  {subtitleOptions.map(option => (
                     <button
                       key={option.value}
                       type="button"

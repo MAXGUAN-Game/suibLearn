@@ -158,6 +158,7 @@ export default function LearningPage() {
         <div className="lg:flex-1 lg:min-w-0">
           <VideoPlayer
             src={getVideoFileUrl(videoId!)}
+            sourceLanguage={video.source_language}
             subtitles={subtitles}
             onTimeUpdate={setCurrentTime}
             seekTo={seekTo}
