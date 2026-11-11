@@ -8,6 +8,7 @@ import {
   getCoverUrl,
 } from '../../services/api';
 import type { CollectionItem, StorageInfo } from '../../services/api';
+import AISettingsButton from '../AISettings/AISettingsButton';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -358,6 +359,7 @@ export default function CollectionList({ onLogout }: CollectionListProps) {
             <span className="text-sm text-[#666] ml-2 font-normal hidden sm:inline">合集</span>
           </h1>
           <div className="flex items-center gap-2">
+            <AISettingsButton />
             <button
               onClick={() => navigate('/videos')}
               className="inline-flex items-center gap-2 px-3 py-2.5 rounded-xl border border-[#333] text-[#a0a0a0] hover:text-[#e0e0e0] hover:border-[#555] transition min-h-[44px] text-sm font-medium"

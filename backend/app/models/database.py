@@ -90,6 +90,70 @@ async def init_db():
             ON videos(collection_id)
         """)
 
+        # Successful AI sentence analyses survive restarts without changing subtitles.
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS grammar_analysis_cache (
+                cache_key TEXT PRIMARY KEY,
+                result_json TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS ai_settings (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                api_key TEXT NOT NULL,
+                base_url TEXT NOT NULL,
+                model TEXT NOT NULL,
+                version INTEGER NOT NULL DEFAULT 1
+            )
+        """)
+
+        await db.commit()
+
+
+async def get_grammar_analysis(cache_key: str) -> Optional[str]:
+    async with aiosqlite.connect(_db_path) as db:
+        cursor = await db.execute(
+            "SELECT result_json FROM grammar_analysis_cache WHERE cache_key = ?",
+            (cache_key,),
+        )
+        row = await cursor.fetchone()
+        return row[0] if row else None
+
+
+async def get_ai_settings() -> Optional[dict]:
+    async with aiosqlite.connect(_db_path) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute("SELECT api_key, base_url, model, version FROM ai_settings WHERE id = 1")
+        row = await cursor.fetchone()
+        return dict(row) if row else None
+
+
+async def save_ai_settings(api_key: str, base_url: str, model: str):
+    async with aiosqlite.connect(_db_path) as db:
+        await db.execute("""
+            INSERT INTO ai_settings (id, api_key, base_url, model, version)
+            VALUES (1, ?, ?, ?, 1)
+            ON CONFLICT(id) DO UPDATE SET api_key = excluded.api_key,
+                base_url = excluded.base_url, model = excluded.model, version = ai_settings.version + 1
+        """, (api_key, base_url, model))
+        await db.commit()
+
+
+async def save_grammar_analysis(cache_key: str, result_json: str):
+    async with aiosqlite.connect(_db_path) as db:
+        await db.execute(
+            "INSERT OR REPLACE INTO grammar_analysis_cache (cache_key, result_json) VALUES (?, ?)",
+            (cache_key, result_json),
+        )
+        # Bound storage for a long-running personal server.
+        await db.execute("""
+            DELETE FROM grammar_analysis_cache WHERE cache_key IN (
+                SELECT cache_key FROM grammar_analysis_cache
+                ORDER BY created_at DESC, rowid DESC LIMIT -1 OFFSET 2000
+            )
+        """)
         await db.commit()
 
 

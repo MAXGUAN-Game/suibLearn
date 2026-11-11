@@ -9,6 +9,7 @@ import {
 } from '../../services/api';
 import VideoPlayer from '../VideoPlayer/VideoPlayer';
 import SubtitlePanel from '../SubtitlePanel/SubtitlePanel';
+import AISettingsButton from '../AISettings/AISettingsButton';
 
 /** Transform API subtitle format → component subtitle format */
 function transformSubtitles(apiSubs: ApiSubtitleLine[]): SubtitleLine[] {
@@ -137,9 +138,10 @@ export default function LearningPage() {
             <span className="text-[#e74c3c]">Sub</span>Learn
           </h1>
         </div>
-        <span className="text-sm text-[#a0a0a0] truncate max-w-[300px]">
-          {video.title}
-        </span>
+        <div className="flex items-center gap-3 min-w-0" style={{ marginLeft: 12 }}>
+          <span className="text-sm text-[#a0a0a0] truncate max-w-[300px] min-w-0">{video.title}</span>
+          <AISettingsButton />
+        </div>
       </header>
 
       {/* Processing banner */}

@@ -72,6 +72,27 @@ export interface CollectionDetail {
   videos: VideoItem[];
 }
 
+export interface GrammarAnalysisResult {
+  sentence: string;
+  translation: string;
+  summary: string;
+  segments: Array<{ text: string; role: string; explanation: string }>;
+}
+
+export interface AISettings {
+  provider: 'deepseek';
+  base_url: string;
+  model: string;
+  api_key_configured: boolean;
+  version: number;
+}
+
+export interface AISettingsInput {
+  api_key?: string;
+  base_url: string;
+  model: string;
+}
+
 // --- Auth Token Management :::::::::::::::::::::::::::::::::::::::::::::::
 
 const TOKEN_KEY = 'sublearn_token';
@@ -128,7 +149,13 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (!resp.ok) {
     const data = await resp.json().catch(() => ({ detail: resp.statusText }));
-    throw new Error(data.detail || `Request failed: ${resp.status}`);
+    const detail: unknown = data.detail;
+    const message = typeof detail === 'string'
+      ? detail
+      : Array.isArray(detail)
+        ? detail.map(item => item && typeof item.msg === 'string' ? item.msg : '').filter(Boolean).join('；')
+        : '';
+    throw new Error(message || resp.statusText || `请求失败（${resp.status}）`);
   }
 
   return resp.json();
@@ -211,6 +238,42 @@ export async function getVideos(search = '', language = ''): Promise<{ videos: V
 /** Get video detail with subtitles */
 export async function getVideoDetail(videoId: string): Promise<VideoDetail> {
   return request(`/videos/${videoId}`);
+}
+
+/** Explain the grammar of one subtitle sentence. */
+export async function analyzeGrammar(
+  text: string,
+  translation: string | undefined,
+  signal: AbortSignal,
+): Promise<GrammarAnalysisResult> {
+  return request('/analysis/grammar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, translation }),
+    signal,
+  });
+}
+
+export async function getAISettings(signal?: AbortSignal): Promise<AISettings> {
+  return request('/settings/ai', { signal });
+}
+
+export async function saveAISettings(settings: AISettingsInput, signal?: AbortSignal): Promise<AISettings> {
+  return request('/settings/ai', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(settings),
+    signal,
+  });
+}
+
+export async function testAISettings(settings: AISettingsInput, signal?: AbortSignal): Promise<{ ok: boolean; message: string }> {
+  return request('/settings/ai/test', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(settings),
+    signal,
+  });
 }
 
 /** Delete a video */

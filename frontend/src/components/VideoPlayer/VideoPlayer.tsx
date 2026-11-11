@@ -1,5 +1,6 @@
 import { useRef, useEffect, useCallback, useState, useMemo, useId } from 'react';
 import type { SubtitleLine } from '../../types';
+import GrammarAnalysis from '../GrammarAnalysis/GrammarAnalysis';
 
 interface Props {
   src: string;
@@ -43,6 +44,8 @@ export default function VideoPlayer({
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [subtitleMode, setSubtitleMode] = useState<SubtitleMode>('ja-zh');
   const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
+  const [analysisTarget, setAnalysisTarget] = useState<{ src: string; subtitle: SubtitleLine } | null>(null);
+  const analysisButtonRef = useRef<HTMLButtonElement>(null);
   const subtitleControlRef = useRef<HTMLDivElement>(null);
   const subtitleButtonRef = useRef<HTMLButtonElement>(null);
   const subtitleMenuId = useId();
@@ -81,6 +84,10 @@ export default function VideoPlayer({
   const currentSub = useMemo(() => {
     return subtitles.find(s => currentTime >= s.start && currentTime <= s.end);
   }, [subtitles, currentTime]);
+  const showAnalysis = analysisTarget !== null && analysisTarget.src === src &&
+    analysisTarget.subtitle.start === currentSub?.start && analysisTarget.subtitle.end === currentSub?.end &&
+    analysisTarget.subtitle.text === currentSub?.text;
+  const closeAnalysis = useCallback(() => setAnalysisTarget(null), []);
 
   // Sync audio to video time (for DASH)
   const syncAudio = useCallback(() => {
@@ -97,7 +104,7 @@ export default function VideoPlayer({
   }, [hasSeparateAudio]);
 
   // High-precision time tracking via RAF
-  const tick = useCallback(() => {
+  const tick = useCallback(function trackPlayback() {
     const video = videoRef.current;
     if (video && !video.paused) {
       const t = video.currentTime;
@@ -134,7 +141,7 @@ export default function VideoPlayer({
         }
       }
     }
-    rafRef.current = requestAnimationFrame(tick);
+    rafRef.current = requestAnimationFrame(trackPlayback);
   }, [onTimeUpdate, abLoop, sentenceMode, subtitles, syncAudio, hasSeparateAudio]);
 
   useEffect(() => {
@@ -164,6 +171,7 @@ export default function VideoPlayer({
   }, [speed, hasSeparateAudio]);
 
   const togglePlay = () => {
+    closeAnalysis();
     const video = videoRef.current;
     const audio = audioRef.current;
     if (!video) return;
@@ -185,6 +193,7 @@ export default function VideoPlayer({
   };
 
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    closeAnalysis();
     const video = videoRef.current;
     if (!video || !duration) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -208,6 +217,7 @@ export default function VideoPlayer({
             className="max-w-full max-h-full"
             onLoadedMetadata={(e) => setDuration((e.target as HTMLVideoElement).duration)}
             onPlay={() => {
+              closeAnalysis();
               setPlaying(true);
               if (audioRef.current && hasSeparateAudio) {
                 audioRef.current.currentTime = videoRef.current!.currentTime;
@@ -221,6 +231,11 @@ export default function VideoPlayer({
               }
             }}
             onSeeked={() => {
+              closeAnalysis();
+              if (videoRef.current) {
+                setCurrentTime(videoRef.current.currentTime);
+                onTimeUpdate(videoRef.current.currentTime);
+              }
               if (audioRef.current && hasSeparateAudio && videoRef.current) {
                 audioRef.current.currentTime = videoRef.current.currentTime;
               }
@@ -267,7 +282,7 @@ export default function VideoPlayer({
         </div>
 
         {/* Control Buttons */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-y-1">
           <div className="flex items-center gap-2">
             {/* Play/Pause */}
             <button
@@ -284,6 +299,46 @@ export default function VideoPlayer({
           </div>
 
           <div className="flex items-center gap-1">
+            <button
+              ref={analysisButtonRef}
+              type="button"
+              disabled={!currentSub?.text.trim()}
+              aria-label="解析当前台词语法"
+              aria-expanded={showAnalysis}
+              aria-haspopup="dialog"
+              title={currentSub?.text.trim() ? 'AI 解析当前台词的语法' : '当前没有台词可解析'}
+              onClick={() => {
+                if (showAnalysis) {
+                  closeAnalysis();
+                  return;
+                }
+                const playbackTime = videoRef.current?.currentTime ?? currentTime;
+                const activeSubtitle = subtitles.find(sub => playbackTime >= sub.start && playbackTime <= sub.end);
+                if (!activeSubtitle?.text.trim()) return;
+                videoRef.current?.pause();
+                if (hasSeparateAudio) audioRef.current?.pause();
+                setCurrentTime(playbackTime);
+                onTimeUpdate(playbackTime);
+                setPlaying(false);
+                setShowSubtitleMenu(false);
+                setShowSpeedMenu(false);
+                setAnalysisTarget({ src, subtitle: activeSubtitle });
+              }}
+              className={`min-w-[56px] min-h-[44px] flex items-center justify-center rounded-lg transition text-sm disabled:opacity-35 disabled:cursor-not-allowed ${
+                showAnalysis ? 'bg-[#2a2a2a] text-white' : 'hover:bg-[#2a2a2a] text-[#a0a0a0]'
+              }`}
+              style={{ padding: '0 12px' }}
+            >
+              解析
+            </button>
+            {showAnalysis && analysisTarget && (
+              <GrammarAnalysis
+                key={`${src}:${analysisTarget.subtitle.start}:${analysisTarget.subtitle.text}`}
+                subtitle={analysisTarget.subtitle}
+                anchorRef={analysisButtonRef}
+                onClose={closeAnalysis}
+              />
+            )}
             {/* Subtitle Mode */}
             <div
               ref={subtitleControlRef}
@@ -302,6 +357,7 @@ export default function VideoPlayer({
                 aria-controls={showSubtitleMenu ? subtitleMenuId : undefined}
                 title="切换字幕模式"
                 onClick={() => {
+                  closeAnalysis();
                   setShowSubtitleMenu(open => !open);
                   setShowSpeedMenu(false);
                 }}
@@ -367,6 +423,7 @@ export default function VideoPlayer({
             <div className="relative">
               <button
                 onClick={() => {
+                  closeAnalysis();
                   setShowSpeedMenu(!showSpeedMenu);
                   setShowSubtitleMenu(false);
                 }}

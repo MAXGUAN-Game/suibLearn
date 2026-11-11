@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from app.config import settings
 from app.models.database import init_db
 from app.auth import get_current_user
-from app.routers import auth as auth_router, upload, library, collections
+from app.routers import auth as auth_router, upload, library, collections, analysis, ai_settings
 
 
 @asynccontextmanager
@@ -48,6 +48,8 @@ app.include_router(auth_router.router, prefix="/api/auth", tags=["auth"])
 app.include_router(upload.router, prefix="/api/upload", tags=["upload"], dependencies=[Depends(get_current_user)])
 app.include_router(library.router, prefix="/api/videos", tags=["library"], dependencies=[Depends(get_current_user)])
 app.include_router(collections.router, prefix="/api/collections", tags=["collections"], dependencies=[Depends(get_current_user)])
+app.include_router(analysis.router, prefix="/api/analysis", tags=["analysis"], dependencies=[Depends(get_current_user)])
+app.include_router(ai_settings.router, prefix="/api/settings", tags=["settings"], dependencies=[Depends(get_current_user)])
 
 # Serve media files (for local dev; in production Nginx handles this)
 app.mount("/media", StaticFiles(directory=settings.MEDIA_DIR), name="media")

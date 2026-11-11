@@ -1,0 +1,35 @@
+.ai-settings-trigger { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 13px; border: 1px solid #343438; border-radius: 9px; background: transparent; color: #b8b8c2; font-size: 13px; white-space: nowrap; cursor: pointer; }
+.ai-settings-trigger:hover { color: #f1f1f5; border-color: #5b526b; background: #ffffff06; }
+.ai-settings-backdrop { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; padding: 16px; background: #000b; backdrop-filter: blur(5px); }
+.ai-settings-panel { width: 100%; max-width: 480px; max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior: contain; padding: 25px; border: 1px solid #38383e; border-radius: 18px; background: #1b1b1e; color: #ededf0; box-shadow: 0 20px 90px #0008; font-size: 14px; line-height: 1.6; }
+.ai-settings-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.ai-settings-eyebrow { color: #b3a5d9; font-size: 10px; letter-spacing: .12em; margin-bottom: 4px; }
+.ai-settings-heading h2 { font-size: 22px; font-weight: 600; line-height: 1.4; }
+.ai-settings-close { width: 32px; height: 32px; border: 0; border-radius: 7px; background: transparent; color: #aaaab5; font-size: 26px; cursor: pointer; }
+.ai-settings-close:hover { background: #ffffff10; color: white; }
+.ai-settings-intro { color: #9999a6; font-size: 13px; margin-top: 11px; margin-bottom: 21px; }
+.ai-settings-fields { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 17px; }
+.ai-settings-field label { display: flex; align-items: center; gap: 8px; font-weight: 500; font-size: 13px; margin-bottom: 7px; }
+.ai-settings-field input { display: block; width: 100%; min-width: 0; min-height: 43px; padding: 9px 12px; border: 1px solid #3d3d46; border-radius: 8px; background: #141417; color: #e1e1e9; font: inherit; font-size: 13px; outline: none; }
+.ai-settings-field input:focus { border-color: #b5a1df; box-shadow: 0 0 0 2px #b5a1df14; }
+.ai-settings-field input::placeholder { color: #70707c; }
+.ai-settings-field input:disabled { opacity: .5; }
+.ai-settings-field .ai-settings-readonly { color: #aaaab8; background: #ffffff03; }
+.ai-settings-hint { margin-top: 6px; color: #858592; font-size: 11px; overflow-wrap: anywhere; }
+.ai-settings-configured, .ai-settings-unconfigured { padding: 1px 6px; border-radius: 4px; font-weight: 400; font-size: 10px; }
+.ai-settings-configured { color: #82d8b4; background: #82d8b412; }
+.ai-settings-unconfigured { color: #d9b58b; background: #d9b58b12; }
+.ai-settings-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+.ai-settings-primary, .ai-settings-secondary { min-height: 41px; padding: 9px 15px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; }
+.ai-settings-primary { border: 1px solid #a18bc6; background: #b8a1df; color: #1d1729; }
+.ai-settings-primary:hover { background: #cbb5ef; }
+.ai-settings-secondary { border: 1px solid #43434e; background: #ffffff04; color: #c9c9d4; }
+.ai-settings-secondary:hover { background: #ffffff0b; }
+.ai-settings-panel button:disabled { opacity: .45; cursor: wait; }
+.ai-settings-panel button:focus-visible, .ai-settings-trigger:focus-visible { outline: 2px solid #c4b1ff; outline-offset: 3px; }
+.ai-settings-error, .ai-settings-success { margin-top: 16px; padding: 10px 12px; border-radius: 7px; font-size: 12px; overflow-wrap: anywhere; }
+.ai-settings-error { background: #ed8b8110; color: #f3aaa3; }
+.ai-settings-success { background: #82d8b410; color: #99dfbf; }
+.ai-settings-footnote { margin-top: 10px; color: #777784; font-size: 11px; text-align: right; }
+.ai-settings-status { margin-bottom: 14px; color: #aaaab8; font-size: 13px; }
+@media (max-width: 520px) { .ai-settings-panel { padding: 20px; border-radius: 14px; } .ai-settings-actions button { flex: 1; } .ai-settings-footnote { text-align: left; } }

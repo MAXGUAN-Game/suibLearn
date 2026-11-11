@@ -18,6 +18,11 @@ class Settings:
     LLM_BASE_URL: str = os.getenv("LLM_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
     LLM_MODEL: str = os.getenv("LLM_MODEL", "qwen3-omni-flash")
 
+    # --- Sentence grammar analysis (separate from subtitle translation) ---
+    DEEPSEEK_API_KEY: str = os.getenv("DEEPSEEK_API_KEY", "")
+    DEEPSEEK_BASE_URL: str = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+    DEEPSEEK_MODEL: str = os.getenv("DEEPSEEK_MODEL", "deepseek-flash")
+
     # --- Database ---
     DATABASE_PATH: str = os.getenv("DATABASE_PATH", str(Path(__file__).resolve().parent.parent / "data" / "sublearn.db"))
 

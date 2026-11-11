@@ -1,0 +1,44 @@
+.grammar-popover {
+  position: fixed;
+  z-index: 50;
+  border: 1px solid #3a3a3e;
+  border-radius: 16px;
+  background: #1b1b1e;
+  color: #ededf0;
+  box-shadow: 0 16px 64px #0009, 0 4px 16px #0005;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.grammar-popover-arrow { position: absolute; left: var(--grammar-arrow-left); top: var(--grammar-arrow-top); width: 12px; height: 12px; background: #1b1b1e; border-right: 1px solid #3a3a3e; border-bottom: 1px solid #3a3a3e; transform: translateY(-6px) rotate(45deg); }
+.grammar-popover-scroll { max-height: inherit; overflow-y: auto; overscroll-behavior: contain; padding: 22px; border-radius: inherit; }
+.grammar-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.grammar-eyebrow { font-size: 11px; letter-spacing: .12em; color: #b3a5d9; margin-bottom: 3px; }
+.grammar-heading h2 { margin: 0; font-size: 19px; font-weight: 600; line-height: 1.4; }
+.grammar-close { flex-shrink: 0; width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: #a5a5ae; font-size: 26px; line-height: 1; cursor: pointer; }
+.grammar-close:hover { background: #ffffff12; color: white; }
+.grammar-original, .grammar-colored-sentence { font-size: 23px; line-height: 1.9; font-weight: 500; white-space: pre-wrap; overflow-wrap: anywhere; }
+.grammar-colored-sentence { margin: 0 -2px; }
+.grammar-segment { display: inline; padding: 2px; margin: 0 1px; border: 0; border-bottom: 2px solid var(--segment-color); border-radius: 4px; color: var(--segment-color); background: transparent; font: inherit; white-space: pre-wrap; cursor: pointer; transition: background .15s; }
+.grammar-segment sup { position: relative; top: -.6em; font-size: 10px; margin-left: 2px; }
+.grammar-segment:hover, .grammar-segment.is-active { background: #ffffff12; }
+.grammar-translation { margin-top: 12px; color: #a9a9b3; font-size: 14px; white-space: pre-wrap; }
+.grammar-summary { margin-top: 20px; padding: 14px 16px; border: 1px solid #ffffff0b; border-radius: 10px; background: #ffffff05; }
+.grammar-summary h3, .grammar-parts-heading { margin: 0 0 7px; font-size: 13px; font-weight: 600; color: #dddde5; }
+.grammar-summary p { color: #c5c5cf; white-space: pre-wrap; }
+.grammar-parts-heading { margin-top: 22px; margin-bottom: 12px; }
+.grammar-parts { display: grid; gap: 12px; }
+.grammar-part { padding: 12px 14px; border-left: 2px solid var(--segment-color); border-radius: 0 8px 8px 0; background: #ffffff03; transition: background .15s; scroll-margin: 12px; }
+.grammar-part.is-active { background: #ffffff0c; }
+.grammar-part-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--segment-color); font-weight: 500; overflow-wrap: anywhere; }
+.grammar-part-heading > span { min-width: 0; max-width: 100%; }
+.grammar-part-number { display: inline-flex; width: 19px; height: 19px; justify-content: center; align-items: center; border: 1px solid currentColor; border-radius: 50%; font-size: 10px; line-height: 1; flex-shrink: 0; }
+.grammar-role { padding: 1px 7px; background: #ffffff08; border-radius: 4px; font-size: 11px; }
+.grammar-part p { margin-top: 7px; color: #b9b9c3; font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.grammar-loading { display: flex; gap: 10px; align-items: center; padding: 26px 0 10px; color: #aaaab5; font-size: 13px; }
+.grammar-spinner { width: 15px; height: 15px; flex-shrink: 0; border: 2px solid #565160; border-top-color: #c4b1ff; border-radius: 50%; animation: grammar-spin 1s linear infinite; }
+.grammar-error { margin-top: 20px; color: #f4b2ae; }
+.grammar-retry { margin-top: 12px; padding: 7px 13px; border: 1px solid #53505c; border-radius: 7px; background: #ffffff08; color: #ededf0; cursor: pointer; }
+.grammar-popover button:focus-visible { outline: 2px solid #c4b1ff; outline-offset: 3px; }
+@keyframes grammar-spin { to { transform: rotate(360deg); } }
+@media (max-width: 600px) { .grammar-popover-scroll { padding: 18px; } .grammar-original, .grammar-colored-sentence { font-size: 20px; } }
+@media (prefers-reduced-motion: reduce) { .grammar-spinner { animation: none; } }
