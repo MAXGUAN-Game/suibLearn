@@ -163,7 +163,10 @@ npx.cmd eslint src/components/VideoPlayer/VideoPlayer.tsx src/components/Grammar
 - 鉴权 API：`GET/PUT /api/playback/settings`，配置字段 `speed/subtitle_mode/sentence_mode`，PUT 支持部分更新；`GET/PUT /api/playback/progress/{video_id}`，字段 `position/duration`。返回 `updated_at` 为 epoch 毫秒；无书签为 `0/0/0`，写进度要求有限数值且 `0 <= position <= duration`、`duration > 0`。
 - 浏览器 `sublearn_player_settings_v1`、`sublearn_watch_progress_v1` 作为本地兜底，以时间戳协调服务器与较新的离线记录；本地最多保留 200 集，服务器书签不受此限制。播放期间本地最多每秒写入一次，服务器最多每 5 秒同步一次；暂停、跳转、隐藏、退出时刷新最新位置，网络恢复后重试待同步数据。排队请求合并为最新值，旧页面迟到响应不覆盖新视频状态。
 - 代码入口：`frontend/src/hooks/usePlaybackState.ts`、`services/playbackPersistence.ts`、`utils/playerState.ts`；后端 `routers/playback.py` 与 `models/database.py`。没有旧进度可迁移，新记忆从本次更新后开始记录。
-- 本地 66 项后端测试、16 项前端工具测试、TypeScript/Vite 构建与修改文件 ESLint 通过。浏览器使用可 Range 跳转的媒体夹具验证刷新、暂停刷新、每集独立书签、跨浏览器读取、离线兜底与重连、切换路由时旧请求隔离；现有解析浮窗交互回归通过。发布与真实供应商验证结果在完成后追加。
+- 本地及服务器候选镜像的 66 项后端测试通过；16 项前端工具测试、TypeScript/Vite 构建与修改文件 ESLint 通过。浏览器使用可 Range 跳转的媒体夹具验证刷新、暂停刷新、每集独立书签、跨浏览器读取、离线兜底与重连、切换路由时旧请求隔离；现有解析浮窗交互回归通过。
+- 功能提交 `1e881ff` 已上线，镜像 `sublearn-backend:memory-1e881ff8`。对截图原句连续发起三次新的真实 DeepSeek 请求，均通过归一化和逐字校验；生产浏览器显示两个有效片段「何よ 」「偉そうに」，汉字读音、成分及词义正常，手机无横向溢出。
+- 生产浏览器使用真实《孤独的美食家》首集验证 73.25 秒恢复、修改为 91.5 秒后刷新恢复、全新浏览器上下文恢复，以及字幕模式／1.25 倍速／逐句暂停的服务器持久化。测试结束后按条件恢复测试前的设置和书签，未留下测试位置。原 39 个视频、16215 行字幕、4 个合集及 AI 设置完整记录差集校验通过，健康检查正常。
+- 发布前源码和前端备份：`/opt/sublearn-releases/20261111T131147Z-before-playback-memory/source-before.tar.gz`；数据库备份：`/app/data/backups/before-memory-20261111T131147Z.db`；旧镜像：`sublearn-backend:before-memory-20261111T131147Z`。应用回滚时保留新增播放表和观看记录；原视频不需要重新上传。
 
 ## 追加：句子结构、汉字读音与词义（2026-11-11）
 
