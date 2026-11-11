@@ -1,0 +1,238 @@
+{
+  "verified_date": "2026-11-11",
+  "scope": "Only Gourmet S01E02-S01E05 imported; other episodes deferred at user request",
+  "collection_id": "14acf1ed-abe5-41d3-a853-73874fe562de",
+  "collection_url": "http://118.178.178.123/collection/14acf1ed-abe5-41d3-a853-73874fe562de",
+  "collection_episode_count": 5,
+  "format": "1920x1080 H.264 yuv420p NVENC p5 CQ23 max6Mbps / AAC160k stereo; external Japanese-Chinese ASS; no burned-in captions",
+  "source_language": "ja",
+  "database_backup": "/app/data/backups/before-gourmet-02-05-20261111T142143Z.db",
+  "added_video_bytes": 4422887109,
+  "storage_preflight": {
+    "used_bytes": 26039501990,
+    "total_bytes": 32212254720,
+    "physical_free_bytes": 9176834048
+  },
+  "storage_at_import_start_or_resume": {
+    "used_bytes": 26387397969,
+    "total_bytes": 32212254720,
+    "used_gb": 24.58,
+    "total_gb": 30.0,
+    "usage_percent": 81.9
+  },
+  "storage_after": {
+    "used_bytes": 30462884591,
+    "total_bytes": 32212254720,
+    "used_gb": 28.37,
+    "total_gb": 30.0,
+    "usage_percent": 94.6
+  },
+  "physical_free_bytes_after": 4748472320,
+  "covers": [
+    {
+      "slug": "gourmet",
+      "collection_id": "14acf1ed-abe5-41d3-a853-73874fe562de",
+      "path": "collections/14acf1ed-abe5-41d3-a853-73874fe562de/cover.png",
+      "sha256": "49782e8851e374cc9cd6f9f98d96d84bb2cfa295a3fd55d9e075242a4b0a122a",
+      "size": 184493,
+      "verified": true
+    },
+    {
+      "slug": "diner",
+      "collection_id": "25245fa1-4769-4d1c-a7bd-981a6f0e9ec8",
+      "path": "collections/25245fa1-4769-4d1c-a7bd-981a6f0e9ec8/cover.png",
+      "sha256": "941f59d6e62580c6c329a1ae5089d9fda5ad544977b81a7dcfb807f650ab8fd7",
+      "size": 141310,
+      "verified": true
+    }
+  ],
+  "integrity": {
+    "original_video_subtitle_ai_records_preserved": true,
+    "collection_metadata_preserved_except_requested_covers": true,
+    "counts": {
+      "videos": 43,
+      "subtitle_lines": 17334,
+      "collections": 4
+    },
+    "gourmet_episodes": 5,
+    "diner_episodes": 1
+  },
+  "browser": {
+    "episodes": [
+      {
+        "episode": "S01E02",
+        "video_id": "b3e1053c-b01f-4ebe-affb-279410c6cd8b",
+        "playback": {
+          "width": 1920,
+          "height": 1080,
+          "duration": 1446.976,
+          "frames": 13
+        },
+        "bilingual": true,
+        "japanese_only": true,
+        "subtitle_off": true,
+        "seeks": [
+          31.77,
+          723.488,
+          1273.33888
+        ]
+      },
+      {
+        "episode": "S01E03",
+        "video_id": "45800523-d629-49d9-bcc7-f0a0f9e7a018",
+        "playback": {
+          "width": 1920,
+          "height": 1080,
+          "duration": 1446.976,
+          "frames": 14
+        },
+        "bilingual": true,
+        "japanese_only": true,
+        "subtitle_off": true,
+        "seeks": [
+          60.690000000000005,
+          723.488,
+          1273.33888
+        ]
+      },
+      {
+        "episode": "S01E04",
+        "video_id": "cec5aef5-1792-4637-a4b8-e88ace7909d3",
+        "playback": {
+          "width": 1920,
+          "height": 1080,
+          "duration": 1454.976,
+          "frames": 14
+        },
+        "bilingual": true,
+        "japanese_only": true,
+        "subtitle_off": true,
+        "seeks": [
+          35.300000000000004,
+          727.488,
+          1280.3788800000002
+        ]
+      },
+      {
+        "episode": "S01E05",
+        "video_id": "d04df6a5-0c98-43a2-8f89-b6de38791395",
+        "playback": {
+          "width": 1920,
+          "height": 1080,
+          "duration": 1454.976,
+          "frames": 14
+        },
+        "bilingual": true,
+        "japanese_only": true,
+        "subtitle_off": true,
+        "seeks": [
+          35.370000000000005,
+          727.488,
+          1280.3788800000002
+        ]
+      }
+    ],
+    "covers": [
+      {
+        "collection_id": "14acf1ed-abe5-41d3-a853-73874fe562de",
+        "sha256_matched": true,
+        "rendered": true,
+        "episode_count": 5
+      },
+      {
+        "collection_id": "25245fa1-4769-4d1c-a7bd-981a6f0e9ec8",
+        "sha256_matched": true,
+        "rendered": true,
+        "episode_count": 1
+      }
+    ],
+    "home_covers": true,
+    "playback_writes_isolated": true,
+    "runtime_errors": []
+  },
+  "qa_no_playback_writes": true,
+  "deferred": {
+    "gourmet": [
+      "S01E06",
+      "S01E07",
+      "S01E08",
+      "S01E09",
+      "S01E10",
+      "S01E11",
+      "S01E12"
+    ],
+    "diner": [
+      "S01E02",
+      "S01E03",
+      "S01E04",
+      "S01E05",
+      "S01E06",
+      "S01E07",
+      "S01E08",
+      "S01E09",
+      "S01E10"
+    ]
+  },
+  "episodes": [
+    {
+      "episode": "S01E02",
+      "video_id": "b3e1053c-b01f-4ebe-affb-279410c6cd8b",
+      "title": "孤独的美食家 S01E02 · 第 2 集",
+      "learning_url": "http://118.178.178.123/learn/b3e1053c-b01f-4ebe-affb-279410c6cd8b",
+      "size": 1099940383,
+      "sha256": "d2b6d560445422ec2d89902402914262be0c57cf8b8cfd3d2c9df345d4e50c2b",
+      "subtitle_sha256": "761b1dba80e470d55fb1e4a037342f04b3dc8a78c4943074938b82e3d2f2c78d",
+      "duration": 1446.976,
+      "width": 1920,
+      "height": 1080,
+      "subtitle_entries": 301,
+      "bilingual_pairs": 258,
+      "api_verified": true
+    },
+    {
+      "episode": "S01E03",
+      "video_id": "45800523-d629-49d9-bcc7-f0a0f9e7a018",
+      "title": "孤独的美食家 S01E03 · 第 3 集",
+      "learning_url": "http://118.178.178.123/learn/45800523-d629-49d9-bcc7-f0a0f9e7a018",
+      "size": 1104323443,
+      "sha256": "41726e03972fda96ce27736d48641fefc1c61d4adda2d4fac882f5635ae378f1",
+      "subtitle_sha256": "d40432514d692bbec2b5135654ae98dd081013009d5578cb1c18e524ba4dea74",
+      "duration": 1446.976,
+      "width": 1920,
+      "height": 1080,
+      "subtitle_entries": 283,
+      "bilingual_pairs": 239,
+      "api_verified": true
+    },
+    {
+      "episode": "S01E04",
+      "video_id": "cec5aef5-1792-4637-a4b8-e88ace7909d3",
+      "title": "孤独的美食家 S01E04 · 第 4 集",
+      "learning_url": "http://118.178.178.123/learn/cec5aef5-1792-4637-a4b8-e88ace7909d3",
+      "size": 1109333622,
+      "sha256": "f992c7fbcb16791b19013100621257d894048520719685f3a0eb6d17eca50f16",
+      "subtitle_sha256": "04e07df4693830e4a4cbdefb3c7001733fbe6b5192318dbaecd3329f3ca875ed",
+      "duration": 1454.976,
+      "width": 1920,
+      "height": 1080,
+      "subtitle_entries": 267,
+      "bilingual_pairs": 235,
+      "api_verified": true
+    },
+    {
+      "episode": "S01E05",
+      "video_id": "d04df6a5-0c98-43a2-8f89-b6de38791395",
+      "title": "孤独的美食家 S01E05 · 第 5 集",
+      "learning_url": "http://118.178.178.123/learn/d04df6a5-0c98-43a2-8f89-b6de38791395",
+      "size": 1109289661,
+      "sha256": "89957327dd343d5fe47a6af188052e2d2a7d012c20f05652176f558ab1503ad8",
+      "subtitle_sha256": "8553849270f8fe57b9e9002d9cedb676f5581c22936d3454f0b597d9c1155b96",
+      "duration": 1454.976,
+      "width": 1920,
+      "height": 1080,
+      "subtitle_entries": 268,
+      "bilingual_pairs": 227,
+      "api_verified": true
+    }
+  ]
+}
