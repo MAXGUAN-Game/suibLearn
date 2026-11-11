@@ -1,0 +1,131 @@
+{
+  "verified_date": "2026-11-11",
+  "scope": "Only Midnight Diner S01E02 imported",
+  "collection_id": "25245fa1-4769-4d1c-a7bd-981a6f0e9ec8",
+  "collection_url": "http://118.178.178.123/collection/25245fa1-4769-4d1c-a7bd-981a6f0e9ec8",
+  "collection_episode_count": 2,
+  "gourmet_collection_episode_count": 5,
+  "source_language": "ja",
+  "format": "1280x720 H.264 yuv420p NVENC p5 CQ23 max4Mbps / AAC160k stereo, external Japanese-Chinese ASS; no burned-in captions; inherited chapter references removed",
+  "database_backup": "/app/data/backups/before-diner-e02-20261111T144415Z.db",
+  "storage_before": {
+    "used_bytes": 30462884591,
+    "total_bytes": 32212254720,
+    "used_gb": 28.37,
+    "total_gb": 30.0,
+    "usage_percent": 94.6
+  },
+  "storage_after": {
+    "used_bytes": 31043526059,
+    "total_bytes": 32212254720,
+    "used_gb": 28.91,
+    "total_gb": 30.0,
+    "usage_percent": 96.4
+  },
+  "physical_free_bytes_after": 4161425408,
+  "covers_preserved": [
+    {
+      "slug": "gourmet",
+      "collection_id": "14acf1ed-abe5-41d3-a853-73874fe562de",
+      "path": "collections/14acf1ed-abe5-41d3-a853-73874fe562de/cover.png",
+      "sha256": "49782e8851e374cc9cd6f9f98d96d84bb2cfa295a3fd55d9e075242a4b0a122a",
+      "size": 184493,
+      "verified": true
+    },
+    {
+      "slug": "diner",
+      "collection_id": "25245fa1-4769-4d1c-a7bd-981a6f0e9ec8",
+      "path": "collections/25245fa1-4769-4d1c-a7bd-981a6f0e9ec8/cover.png",
+      "sha256": "941f59d6e62580c6c329a1ae5089d9fda5ad544977b81a7dcfb807f650ab8fd7",
+      "size": 141310,
+      "verified": true
+    }
+  ],
+  "integrity": {
+    "original_video_subtitle_ai_records_preserved": true,
+    "all_original_collection_fields_preserved": true,
+    "counts": {
+      "videos": 44,
+      "subtitle_lines": 17508,
+      "collections": 4
+    },
+    "gourmet_episodes": 5,
+    "diner_episodes": 2
+  },
+  "browser": {
+    "episodes": [
+      {
+        "episode": "S01E02",
+        "video_id": "288631c0-9b13-480f-a6c6-04b1a36e1468",
+        "playback": {
+          "width": 1280,
+          "height": 720,
+          "duration": 1476.98,
+          "frames": 14
+        },
+        "bilingual": true,
+        "japanese_only": true,
+        "subtitle_off": true,
+        "seeks": [
+          106.43,
+          738.49,
+          1299.7424
+        ]
+      }
+    ],
+    "covers": [
+      {
+        "collection_id": "14acf1ed-abe5-41d3-a853-73874fe562de",
+        "sha256_matched": true,
+        "rendered": true,
+        "episode_count": 5
+      },
+      {
+        "collection_id": "25245fa1-4769-4d1c-a7bd-981a6f0e9ec8",
+        "sha256_matched": true,
+        "rendered": true,
+        "episode_count": 2
+      }
+    ],
+    "home_covers": true,
+    "playback_writes_isolated": true,
+    "runtime_errors": []
+  },
+  "qa_no_playback_writes": true,
+  "deferred": {
+    "diner": [
+      "S01E03",
+      "S01E04",
+      "S01E05",
+      "S01E06",
+      "S01E07",
+      "S01E08",
+      "S01E09",
+      "S01E10"
+    ],
+    "gourmet": [
+      "S01E06",
+      "S01E07",
+      "S01E08",
+      "S01E09",
+      "S01E10",
+      "S01E11",
+      "S01E12"
+    ]
+  },
+  "episode": {
+    "episode": "S01E02",
+    "video_id": "288631c0-9b13-480f-a6c6-04b1a36e1468",
+    "title": "深夜食堂 S01E02 · 第 2 集",
+    "learning_url": "http://118.178.178.123/learn/288631c0-9b13-480f-a6c6-04b1a36e1468",
+    "size": 580614897,
+    "sha256": "6902a9de518560740e81b90e2ef8d86b9ec654d0638f3de0941bcd06c924b00b",
+    "subtitle_sha256": "420002958c2405b5de5d76d216463ac8d358f74a92e5bc15872589aaf662e42b",
+    "duration": 1476.98,
+    "width": 1280,
+    "height": 720,
+    "subtitle_entries": 174,
+    "bilingual_pairs": 141,
+    "api_verified": true
+  }
+}
